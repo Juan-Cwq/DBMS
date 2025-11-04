@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Database, Code, Sparkles, FileText } from 'lucide-react'
+import { Database, Code, Sparkles, FileText, Play } from 'lucide-react'
 import NaturalLanguageInput from './NaturalLanguageInput'
 import SchemaVisualizer from './SchemaVisualizer'
 import CodeTerminal from './CodeTerminal'
 import StatsPanel from './StatsPanel'
+import QueryRunner from './QueryRunner'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('sql')
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const tabs = [
     { id: 'sql', label: 'SQL Generator', icon: Code },
     { id: 'schema', label: 'Schema Designer', icon: Database },
+    { id: 'runner', label: 'Query Runner', icon: Play },
   ]
 
   const handleGenerateSQL = async (prompt) => {
@@ -103,58 +105,69 @@ export default function Dashboard() {
       {/* Stats Panel */}
       <StatsPanel stats={stats} />
 
-      {/* Main workspace */}
-      <div className="grid lg:grid-cols-2 gap-6 mt-6">
-        {/* Left panel - Input */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
-          {/* Tab selector */}
-          <div className="tabs tabs-boxed bg-base-200 p-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`tab gap-2 ${activeTab === tab.id ? 'tab-active' : ''}`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Natural Language Input */}
-          <NaturalLanguageInput
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-            placeholder={
-              activeTab === 'sql'
-                ? 'Describe the query you need... e.g., "Show me the top 10 customers by total spending in the last quarter"'
-                : 'Describe your database structure... e.g., "Create a database for an e-commerce store with customers, products, and orders"'
-            }
-          />
-
-          {/* Schema Visualizer (only for schema tab) */}
-          {activeTab === 'schema' && schemaData && (
-            <SchemaVisualizer schema={schemaData} />
-          )}
-        </motion.div>
-
-        {/* Right panel - Output */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
-          <CodeTerminal
-            code={generatedSQL}
-            language="sql"
-            isLoading={isLoading}
-          />
-        </motion.div>
+      {/* Tab selector */}
+      <div className="tabs tabs-boxed bg-base-200 p-1 mt-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`tab gap-2 ${activeTab === tab.id ? 'tab-active' : ''}`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* Query Runner Tab */}
+      {activeTab === 'runner' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6"
+        >
+          <QueryRunner initialQuery={generatedSQL} />
+        </motion.div>
+      ) : (
+        /* Main workspace for SQL Generator and Schema Designer */
+        <div className="grid lg:grid-cols-2 gap-6 mt-6">
+          {/* Left panel - Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            {/* Natural Language Input */}
+            <NaturalLanguageInput
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              placeholder={
+                activeTab === 'sql'
+                  ? 'Describe the query you need... e.g., "Show me the top 10 customers by total spending in the last quarter"'
+                  : 'Describe your database structure... e.g., "Create a database for an e-commerce store with customers, products, and orders"'
+              }
+            />
+
+            {/* Schema Visualizer (only for schema tab) */}
+            {activeTab === 'schema' && schemaData && (
+              <SchemaVisualizer schema={schemaData} />
+            )}
+          </motion.div>
+
+          {/* Right panel - Output */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            <CodeTerminal
+              code={generatedSQL}
+              language="sql"
+              isLoading={isLoading}
+            />
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
