@@ -16,17 +16,6 @@ export default function ERDiagram() {
     loadSchema()
   }, [])
 
-  useEffect(() => {
-    // Force re-render after refs are set
-    if (Object.keys(tableRefs).length > 0 && relationships.length > 0) {
-      // Trigger a re-render without causing infinite loop
-      const timer = setTimeout(() => {
-        setRelationships(prev => [...prev])
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [Object.keys(tableRefs).length])
-
   const loadSchema = () => {
     const allTables = getTables()
     const tablesWithStructure = allTables.map(table => ({
@@ -208,7 +197,11 @@ export default function ERDiagram() {
           className="absolute inset-0 pointer-events-none" 
           style={{ width: '100%', height: '100%', zIndex: 1 }}
         >
-          {relationships.map(rel => drawRelationship(rel))}
+          {relationships.map((rel, idx) => (
+            <g key={`rel-${idx}`}>
+              {drawRelationship(rel)}
+            </g>
+          ))}
         </svg>
 
         <div className="relative" style={{ zIndex: 2 }}>
