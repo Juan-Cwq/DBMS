@@ -192,9 +192,11 @@ export default function ERDiagram() {
 
   const DiagramContent = () => (
     <div 
-      ref={diagramRef}
+      ref={(el) => {
+        diagramRef.current = el
+        containerRef.current = el
+      }}
       className={`relative ${isFullscreen ? 'w-full h-full' : 'w-full h-[700px]'} overflow-auto bg-white rounded-lg border border-base-300`}
-      style={{ containerRef }}
     >
       <div className="relative p-8" style={{ minWidth: '1400px', minHeight: '900px' }}>
         <svg 
