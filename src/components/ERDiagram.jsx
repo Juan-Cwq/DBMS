@@ -136,7 +136,7 @@ export default function ERDiagram() {
     const midX = (fromX + toX) / 2
     
     return (
-      <g key={`${rel.from}-${rel.to}-${rel.fromColumn}`}>
+      <>
         {/* Main path */}
         <path
           d={`M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${toY} L ${toX} ${toY}`}
@@ -150,7 +150,7 @@ export default function ERDiagram() {
         
         {/* One indicator at PK side */}
         {drawCrowsFoot(toX, toY, 'left', 'one')}
-      </g>
+      </>
     )
   }
 
