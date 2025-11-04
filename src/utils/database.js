@@ -39,18 +39,37 @@ export function executeQuery(sql) {
   }
 
   try {
+    // Enable foreign keys
+    db.exec('PRAGMA foreign_keys = ON;');
+    
     const results = [];
-    const statements = sql.split(';').filter(s => s.trim());
+    
+    // Clean and normalize SQL for SQLite
+    let normalizedSQL = sql
+      .replace(/VARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT') // VARCHAR -> TEXT
+      .replace(/DATETIME/gi, 'TEXT') // DATETIME -> TEXT
+      .replace(/AUTOINCREMENT/gi, 'AUTOINCREMENT') // Fix case
+      .replace(/AUTO_INCREMENT/gi, 'AUTOINCREMENT'); // MySQL -> SQLite
+    
+    const statements = normalizedSQL.split(';').filter(s => s.trim());
     
     for (const statement of statements) {
       if (!statement.trim()) continue;
       
-      const result = db.exec(statement);
-      results.push({
-        statement: statement.trim(),
-        result: result,
-        success: true
-      });
+      try {
+        const result = db.exec(statement.trim());
+        results.push({
+          statement: statement.trim(),
+          result: result,
+          success: true
+        });
+      } catch (stmtError) {
+        // If it's a foreign key error, provide helpful message
+        if (stmtError.message.includes('foreign key')) {
+          throw new Error(`Foreign key constraint failed. Make sure referenced tables exist first. ${stmtError.message}`);
+        }
+        throw stmtError;
+      }
     }
     
     // Save after each execution

@@ -26,6 +26,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   })
   const [showHistory, setShowHistory] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     initDatabase().then(() => {
@@ -96,6 +97,9 @@ export default function QueryRunner({ initialQuery = '' }) {
       const newHistory = [historyEntry, ...queryHistory].slice(0, 50)
       setQueryHistory(newHistory)
       localStorage.setItem('schemacraft_query_history', JSON.stringify(newHistory))
+      
+      // Trigger sidebar refresh
+      setRefreshTrigger(prev => prev + 1)
       
     } catch (err) {
       setError(err.message)
@@ -184,6 +188,7 @@ export default function QueryRunner({ initialQuery = '' }) {
       {/* Database Sidebar */}
       <div className="col-span-3 card bg-base-200 shadow-xl overflow-hidden">
         <DatabaseSidebar 
+          key={refreshTrigger}
           onTableSelect={handleTableSelect}
           onRefresh={handleRefresh}
         />
