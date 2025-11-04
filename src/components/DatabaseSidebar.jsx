@@ -22,6 +22,21 @@ export default function DatabaseSidebar({ onTableSelect, onRefresh }) {
   useEffect(() => {
     loadTables()
   }, [])
+  
+  // Auto-expand all tables when they're loaded
+  useEffect(() => {
+    if (tables.length > 0) {
+      const allTableNames = new Set(tables.map(t => t.name))
+      setExpandedTables(allTableNames)
+      
+      // Load structures for all tables
+      const structures = {}
+      for (const table of tables) {
+        structures[table.name] = getTableStructure(table.name)
+      }
+      setTableStructures(structures)
+    }
+  }, [tables])
 
   const loadTables = () => {
     const allTables = getTables()

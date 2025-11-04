@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Save, History, Trash2, Download, Copy, Check, AlertCircle, CheckCircle } from 'lucide-react'
+import { Play, Save, History, Trash2, Download, Copy, Check, AlertCircle, CheckCircle, Diagram3 } from 'lucide-react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { initDatabase, executeQuery, getTableData } from '../utils/database'
 import DatabaseSidebar from './DatabaseSidebar'
+import ERDiagram from './ERDiagram'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -27,6 +28,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [showHistory, setShowHistory] = useState(false)
   const [copied, setCopied] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showDiagram, setShowDiagram] = useState(false)
 
   useEffect(() => {
     initDatabase().then(() => {
@@ -217,6 +219,13 @@ export default function QueryRunner({ initialQuery = '' }) {
                   <Download className="w-4 h-4" />
                 </button>
                 <button
+                  onClick={() => setShowDiagram(!showDiagram)}
+                  className="btn btn-ghost btn-sm gap-2"
+                >
+                  <Diagram3 className="w-4 h-4" />
+                  {showDiagram ? 'Hide' : 'Show'} Diagram
+                </button>
+                <button
                   onClick={() => setShowHistory(!showHistory)}
                   className="btn btn-ghost btn-sm gap-2"
                 >
@@ -259,6 +268,23 @@ export default function QueryRunner({ initialQuery = '' }) {
             </div>
           </div>
         </div>
+
+        {/* ER Diagram */}
+        <AnimatePresence>
+          {showDiagram && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="card bg-base-200 shadow-xl"
+            >
+              <div className="card-body">
+                <h3 className="card-title text-lg mb-4">Database Schema Diagram</h3>
+                <ERDiagram key={refreshTrigger} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Error Display */}
         <AnimatePresence>
