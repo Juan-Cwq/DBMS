@@ -42,15 +42,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-base-200;
+  background-color: hsl(var(--b2));
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary/50 rounded-full;
+  background-color: hsl(var(--p) / 0.5);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary;
+  background-color: hsl(var(--p));
 }
 
 /* Smooth transitions */
