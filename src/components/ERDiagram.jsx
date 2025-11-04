@@ -17,10 +17,15 @@ export default function ERDiagram() {
   }, [])
 
   useEffect(() => {
-    if (Object.keys(tableRefs).length > 0) {
-      setRelationships([...relationships])
+    // Force re-render after refs are set
+    if (Object.keys(tableRefs).length > 0 && relationships.length > 0) {
+      // Trigger a re-render without causing infinite loop
+      const timer = setTimeout(() => {
+        setRelationships(prev => [...prev])
+      }, 100)
+      return () => clearTimeout(timer)
     }
-  }, [tableRefs])
+  }, [Object.keys(tableRefs).length])
 
   const loadSchema = () => {
     const allTables = getTables()
