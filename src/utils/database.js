@@ -46,10 +46,25 @@ export function executeQuery(sql) {
     
     // Clean and normalize SQL for SQLite
     let normalizedSQL = sql
+      // Data type conversions
       .replace(/VARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT') // VARCHAR -> TEXT
+      .replace(/CHAR\s*\(\s*\d+\s*\)/gi, 'TEXT') // CHAR -> TEXT
       .replace(/DATETIME/gi, 'TEXT') // DATETIME -> TEXT
-      .replace(/AUTOINCREMENT/gi, 'AUTOINCREMENT') // Fix case
-      .replace(/AUTO_INCREMENT/gi, 'AUTOINCREMENT'); // MySQL -> SQLite
+      .replace(/TIMESTAMP/gi, 'TEXT') // TIMESTAMP -> TEXT
+      .replace(/DECIMAL\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'REAL') // DECIMAL -> REAL
+      .replace(/FLOAT/gi, 'REAL') // FLOAT -> REAL
+      .replace(/DOUBLE/gi, 'REAL') // DOUBLE -> REAL
+      .replace(/BOOLEAN/gi, 'INTEGER') // BOOLEAN -> INTEGER
+      .replace(/AUTO_INCREMENT/gi, 'AUTOINCREMENT') // MySQL -> SQLite
+      
+      // Add IF NOT EXISTS to CREATE TABLE statements
+      .replace(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE TABLE IF NOT EXISTS $1')
+      
+      // Remove backticks (MySQL style)
+      .replace(/`/g, '')
+      
+      // Fix CURRENT_TIMESTAMP
+      .replace(/DEFAULT\s+CURRENT_TIMESTAMP/gi, "DEFAULT (datetime('now'))");
     
     const statements = normalizedSQL.split(';').filter(s => s.trim());
     
@@ -64,9 +79,13 @@ export function executeQuery(sql) {
           success: true
         });
       } catch (stmtError) {
-        // If it's a foreign key error, provide helpful message
+        // Provide helpful error messages
         if (stmtError.message.includes('foreign key')) {
           throw new Error(`Foreign key constraint failed. Make sure referenced tables exist first. ${stmtError.message}`);
+        } else if (stmtError.message.includes('already exists')) {
+          throw new Error(`Table already exists. Use DROP TABLE first or modify the CREATE statement. ${stmtError.message}`);
+        } else if (stmtError.message.includes('syntax error')) {
+          throw new Error(`SQL syntax error. Check your query syntax for SQLite compatibility. ${stmtError.message}`);
         }
         throw stmtError;
       }
