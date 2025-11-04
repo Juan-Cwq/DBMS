@@ -103,6 +103,11 @@ export default function QueryRunner({ initialQuery = '' }) {
       // Trigger sidebar refresh
       setRefreshTrigger(prev => prev + 1)
       
+      // Auto-show diagram after CREATE TABLE statements
+      if (query.toUpperCase().includes('CREATE TABLE')) {
+        setShowDiagram(true)
+      }
+      
     } catch (err) {
       setError(err.message)
       const historyEntry = {
