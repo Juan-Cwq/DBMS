@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Save, History, Trash2, Download, Copy, Check, AlertCircle, CheckCircle, Diagram3 } from 'lucide-react'
+import { Play, Save, History, Trash2, Download, Copy, Check, AlertCircle, CheckCircle, Network } from 'lucide-react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { initDatabase, executeQuery, getTableData } from '../utils/database'
@@ -222,7 +222,7 @@ export default function QueryRunner({ initialQuery = '' }) {
                   onClick={() => setShowDiagram(!showDiagram)}
                   className="btn btn-ghost btn-sm gap-2"
                 >
-                  <Diagram3 className="w-4 h-4" />
+                  <Network className="w-4 h-4" />
                   {showDiagram ? 'Hide' : 'Show'} Diagram
                 </button>
                 <button
