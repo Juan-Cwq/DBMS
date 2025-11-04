@@ -1,12 +1,63 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useCallback, useEffect, useState } from 'react'
+import ReactFlow, { 
+  Background, 
+  Controls, 
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  MarkerType
+} from 'reactflow'
+import 'reactflow/dist/style.css'
 import { Database, Key, Maximize2, Download, X } from 'lucide-react'
 import { getTables, getTableStructure } from '../utils/database'
 
+// Custom Table Node Component
+const TableNode = ({ data }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-xl border-2 border-gray-300" style={{ minWidth: '280px' }}>
+      <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
+        <h3 className="font-bold text-center">{data.label}</h3>
+      </div>
+      <div className="p-0">
+        <table className="w-full text-sm">
+          <tbody>
+            {data.columns.map((column, idx) => (
+              <tr 
+                key={idx}
+                className={`${column.pk ? 'bg-yellow-50' : ''} border-b border-gray-200 hover:bg-gray-50`}
+              >
+                <td className="px-3 py-2 font-mono font-semibold">
+                  <div className="flex items-center gap-2">
+                    {column.pk && <Key className="w-3 h-3 text-yellow-600" />}
+                    {column.name}
+                  </div>
+                </td>
+                <td className="px-2 py-2 text-gray-600 font-mono text-xs">
+                  {column.type}
+                </td>
+                <td className="px-3 py-2 text-xs text-gray-500">
+                  {column.pk && <span className="badge badge-warning badge-xs">PK</span>}
+                  {column.fk && <span className="badge badge-primary badge-xs ml-1">FK</span>}
+                  {!column.pk && column.notnull && <span className="text-gray-400">N</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+const nodeTypes = {
+  tableNode: TableNode,
+}
+
 export default function ERDiagram() {
-  const [tables, setTables] = useState([])
-  const [relationships, setRelationships] = useState([])
+  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [tables, setTables] = useState([])
 
   useEffect(() => {
     loadSchema()
@@ -14,17 +65,20 @@ export default function ERDiagram() {
 
   const loadSchema = () => {
     const allTables = getTables()
+    if (allTables.length === 0) return
+
     const tablesWithStructure = allTables.map(table => ({
       ...table,
       structure: getTableStructure(table.name)
     }))
     setTables(tablesWithStructure)
 
-    const rels = []
+    // Extract relationships
+    const relationships = []
     tablesWithStructure.forEach(table => {
       const fkMatches = table.sql.matchAll(/FOREIGN KEY \((\w+)\) REFERENCES (\w+)\((\w+)\)/gi)
       for (const match of fkMatches) {
-        rels.push({
+        relationships.push({
           from: table.name,
           to: match[2],
           fromColumn: match[1],
@@ -32,11 +86,54 @@ export default function ERDiagram() {
         })
       }
     })
-    setRelationships(rels)
+
+    // Create nodes
+    const newNodes = tablesWithStructure.map((table, index) => {
+      const col = index % 3
+      const row = Math.floor(index / 3)
+      
+      // Mark FK columns
+      const columns = table.structure.map(col => ({
+        ...col,
+        fk: relationships.some(r => r.from === table.name && r.fromColumn === col.name)
+      }))
+
+      return {
+        id: table.name,
+        type: 'tableNode',
+        position: { x: col * 350, y: row * 400 },
+        data: { 
+          label: table.name,
+          columns: columns
+        },
+      }
+    })
+
+    // Create edges with proper crow's foot notation
+    const newEdges = relationships.map((rel, idx) => ({
+      id: `e${idx}`,
+      source: rel.from,
+      target: rel.to,
+      type: 'smoothstep',
+      animated: false,
+      style: { stroke: '#00A99D', strokeWidth: 2 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: '#00A99D',
+        width: 20,
+        height: 20,
+      },
+      label: `${rel.fromColumn}`,
+      labelStyle: { fill: '#00A99D', fontWeight: 600, fontSize: 11 },
+      labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
+    }))
+
+    setNodes(newNodes)
+    setEdges(newEdges)
   }
 
   const handleDownload = () => {
-    // Simple text export for now
+    // Export as text
     let content = '# Database Schema\n\n'
     tables.forEach(table => {
       content += `## ${table.name}\n`
@@ -61,92 +158,32 @@ export default function ERDiagram() {
         <div className="text-center">
           <Database className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p>No tables to visualize</p>
-          <p className="text-sm mt-2">Create tables to see the schema</p>
+          <p className="text-sm mt-2">Create tables to see the ER diagram</p>
         </div>
       </div>
     )
   }
 
   const DiagramContent = () => (
-    <div className={`${isFullscreen ? 'w-full h-full' : 'w-full'} overflow-auto bg-white rounded-lg border border-base-300 p-8`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tables.map((table, idx) => (
-          <motion.div
-            key={table.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="card bg-white shadow-xl border-2 border-gray-300 hover:shadow-2xl transition-shadow"
-          >
-            <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
-              <h3 className="font-bold text-center">{table.name}</h3>
-            </div>
-
-            <div className="card-body p-0">
-              <table className="table table-sm w-full">
-                <tbody>
-                  {table.structure && table.structure.map((column) => {
-                    const isFk = relationships.some(r => r.from === table.name && r.fromColumn === column.name)
-                    
-                    return (
-                      <tr
-                        key={column.name}
-                        className={`${column.pk ? 'bg-yellow-50' : ''} hover:bg-gray-50 border-b border-gray-200`}
-                      >
-                        <td className="font-mono text-sm font-semibold py-2 px-3">
-                          <div className="flex items-center gap-2">
-                            {column.pk && <Key className="w-3 h-3 text-yellow-600" />}
-                            {column.name}
-                          </div>
-                        </td>
-                        <td className="text-sm text-gray-600 font-mono py-2">
-                          {column.type}
-                        </td>
-                        <td className="py-2 px-3 text-xs text-gray-500">
-                          {column.pk && 'PK'}
-                          {isFk && ' FK'}
-                          {!column.pk && column.notnull && ' N'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Show relationships for this table */}
-            {relationships.filter(r => r.from === table.name).length > 0 && (
-              <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
-                <div className="text-xs font-semibold text-gray-600 mb-1">Foreign Keys:</div>
-                {relationships.filter(r => r.from === table.name).map((rel, idx) => (
-                  <div key={idx} className="text-xs text-gray-500 font-mono">
-                    {rel.fromColumn} → {rel.to}.{rel.toColumn}
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Relationships Summary */}
-      {relationships.length > 0 && (
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-300">
-          <h4 className="font-semibold mb-3 text-gray-800">Relationships ({relationships.length})</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {relationships.map((rel, idx) => (
-              <div key={idx} className="text-sm font-mono bg-white p-2 rounded border border-gray-200">
-                <span className="text-blue-600">{rel.from}</span>
-                <span className="text-gray-400"> → </span>
-                <span className="text-green-600">{rel.to}</span>
-                <div className="text-xs text-gray-500 mt-1">
-                  {rel.fromColumn} → {rel.toColumn}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className={`${isFullscreen ? 'w-full h-full' : 'w-full h-[700px]'} bg-white rounded-lg border border-base-300`}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        fitView
+        minZoom={0.5}
+        maxZoom={1.5}
+      >
+        <Background color="#e5e7eb" gap={16} />
+        <Controls />
+        <MiniMap 
+          nodeColor="#3b82f6"
+          maskColor="rgba(0, 0, 0, 0.1)"
+          style={{ backgroundColor: '#f3f4f6' }}
+        />
+      </ReactFlow>
     </div>
   )
 
@@ -172,14 +209,9 @@ export default function ERDiagram() {
       {!isFullscreen && <DiagramContent />}
 
       {isFullscreen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/90 z-50 flex flex-col"
-        >
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
           <div className="flex justify-between items-center p-4 bg-base-200">
-            <h2 className="text-xl font-bold">Database Schema</h2>
+            <h2 className="text-xl font-bold">Database Schema Diagram</h2>
             <div className="flex gap-2">
               <button
                 onClick={handleDownload}
@@ -196,10 +228,10 @@ export default function ERDiagram() {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1">
             <DiagramContent />
           </div>
-        </motion.div>
+        </div>
       )}
     </>
   )
