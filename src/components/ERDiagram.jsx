@@ -115,17 +115,32 @@ export default function ERDiagram() {
       source: rel.from,
       target: rel.to,
       type: 'smoothstep',
-      animated: false,
-      style: { stroke: '#00A99D', strokeWidth: 2 },
+      animated: true,
+      style: { 
+        stroke: '#3b82f6', 
+        strokeWidth: 3,
+      },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: '#00A99D',
-        width: 20,
-        height: 20,
+        color: '#3b82f6',
+        width: 25,
+        height: 25,
       },
-      label: `${rel.fromColumn}`,
-      labelStyle: { fill: '#00A99D', fontWeight: 600, fontSize: 11 },
-      labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
+      label: `${rel.fromColumn} → ${rel.toColumn}`,
+      labelStyle: { 
+        fill: '#1e40af', 
+        fontWeight: 700, 
+        fontSize: 12,
+        backgroundColor: 'white',
+        padding: '4px 8px',
+        borderRadius: '4px',
+      },
+      labelBgStyle: { 
+        fill: 'white', 
+        fillOpacity: 0.95,
+        rx: 4,
+        ry: 4,
+      },
     }))
 
     setNodes(newNodes)
