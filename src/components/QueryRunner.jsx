@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { initDatabase, executeQuery, getTableData } from '../utils/database'
 import DatabaseSidebar from './DatabaseSidebar'
-import ERDiagram from './ERDiagram'
+import ERDiagramSVG from './ERDiagramSVG'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -285,7 +285,7 @@ export default function QueryRunner({ initialQuery = '' }) {
             >
               <div className="card-body">
                 <h3 className="card-title text-lg mb-4">Database Schema Diagram</h3>
-                <ERDiagram key={refreshTrigger} />
+                <ERDiagramSVG key={refreshTrigger} />
               </div>
             </motion.div>
           )}
