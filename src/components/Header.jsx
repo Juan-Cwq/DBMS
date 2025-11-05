@@ -1,14 +1,7 @@
-import { useState, useEffect } from 'react'
 import { Database, Moon, Sun } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-export default function Header() {
-  const [theme, setTheme] = useState('light')
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
-
+export default function Header({ theme, setTheme }) {
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light')
   }
