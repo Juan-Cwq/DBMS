@@ -162,7 +162,7 @@ function TableSVG({ table, onDragStart, isDragging }) {
   )
 }
 
-// Relationship component
+// Relationship component with cardinality detection
 function RelationshipSVG({ relationship, tables }) {
   const startTable = tables.find(t => t.id === relationship.startTableId)
   const endTable = tables.find(t => t.id === relationship.endTableId)
@@ -172,6 +172,39 @@ function RelationshipSVG({ relationship, tables }) {
   const startFieldIndex = startTable.fields.findIndex(f => f.id === relationship.startFieldId)
   const endFieldIndex = endTable.fields.findIndex(f => f.id === relationship.endFieldId)
   
+  const startField = startTable.fields[startFieldIndex]
+  const endField = endTable.fields[endFieldIndex]
+  
+  // Determine cardinality based on field properties
+  const startIsUnique = startField?.pk || startField?.unique
+  const endIsUnique = endField?.pk || endField?.unique
+  
+  let markerStart = 'url(#crowsfoot-many)'
+  let markerEnd = 'url(#crowsfoot-one)'
+  let cardinalityType = 'many-to-one'
+  
+  if (startIsUnique && endIsUnique) {
+    // One-to-One
+    markerStart = 'url(#crowsfoot-one)'
+    markerEnd = 'url(#crowsfoot-one)'
+    cardinalityType = 'one-to-one'
+  } else if (startIsUnique && !endIsUnique) {
+    // One-to-Many
+    markerStart = 'url(#crowsfoot-one)'
+    markerEnd = 'url(#crowsfoot-many)'
+    cardinalityType = 'one-to-many'
+  } else if (!startIsUnique && endIsUnique) {
+    // Many-to-One
+    markerStart = 'url(#crowsfoot-many)'
+    markerEnd = 'url(#crowsfoot-one)'
+    cardinalityType = 'many-to-one'
+  } else {
+    // Many-to-Many (both non-unique)
+    markerStart = 'url(#crowsfoot-many)'
+    markerEnd = 'url(#crowsfoot-many)'
+    cardinalityType = 'many-to-many'
+  }
+  
   const pathData = calcPath({
     startTable: { x: startTable.x, y: startTable.y },
     endTable: { x: endTable.x, y: endTable.y },
@@ -180,7 +213,7 @@ function RelationshipSVG({ relationship, tables }) {
   })
   
   return (
-    <g className="relationship">
+    <g className="relationship" data-cardinality={cardinalityType}>
       {/* Invisible wider path for easier hovering */}
       <path
         d={pathData}
@@ -198,8 +231,8 @@ function RelationshipSVG({ relationship, tables }) {
         strokeWidth="2"
         strokeDasharray="5,5"
         className="hover:stroke-blue-500 cursor-pointer"
-        markerStart="url(#crowsfoot-many)"
-        markerEnd="url(#crowsfoot-one)"
+        markerStart={markerStart}
+        markerEnd={markerEnd}
       />
     </g>
   )
@@ -461,7 +494,7 @@ export default function ERDiagramSVG() {
       </svg>
       
       {/* Legend - Compact version in bottom-left */}
-      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-md shadow-lg border border-gray-200 p-2 text-xs max-w-[180px]">
+      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-md shadow-lg border border-gray-200 p-2 text-xs max-w-[200px]">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5">
             <span className="text-sm">🔑</span>
@@ -471,21 +504,56 @@ export default function ERDiagramSVG() {
             <span className="text-blue-500 text-sm">◆</span>
             <span className="text-gray-700">Foreign Key</span>
           </div>
-          <div className="border-t border-gray-200 pt-1 mt-1">
+          <div className="border-t border-gray-200 pt-1 mt-1 space-y-0.5">
+            <p className="font-semibold text-gray-700 mb-1">Relationships:</p>
+            {/* One-to-One */}
             <div className="flex items-center gap-1.5">
-              <svg width="24" height="12" className="flex-shrink-0">
-                <line x1="0" y1="6" x2="18" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
-                <line x1="0" y1="3" x2="5" y2="6" stroke="#94a3b8" strokeWidth="1.5" />
-                <line x1="0" y1="6" x2="5" y2="6" stroke="#94a3b8" strokeWidth="1.5" />
-                <line x1="0" y1="9" x2="5" y2="6" stroke="#94a3b8" strokeWidth="1.5" />
-                <line x1="18" y1="3" x2="18" y2="9" stroke="#94a3b8" strokeWidth="1.5" />
+              <svg width="24" height="10" className="flex-shrink-0">
+                <line x1="0" y1="5" x2="18" y2="5" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
+                <line x1="0" y1="2" x2="0" y2="8" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="2" x2="18" y2="8" stroke="#94a3b8" strokeWidth="1.5" />
               </svg>
-              <span className="text-gray-600">◁ many | one</span>
+              <span className="text-gray-600">1:1</span>
+            </div>
+            {/* One-to-Many */}
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="10" className="flex-shrink-0">
+                <line x1="0" y1="5" x2="18" y2="5" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
+                <line x1="0" y1="2" x2="0" y2="8" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="2" x2="15" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="5" x2="15" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="8" x2="15" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+              </svg>
+              <span className="text-gray-600">1:N</span>
+            </div>
+            {/* Many-to-One */}
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="10" className="flex-shrink-0">
+                <line x1="0" y1="5" x2="18" y2="5" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
+                <line x1="0" y1="2" x2="3" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="0" y1="5" x2="3" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="0" y1="8" x2="3" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="2" x2="18" y2="8" stroke="#94a3b8" strokeWidth="1.5" />
+              </svg>
+              <span className="text-gray-600">N:1</span>
+            </div>
+            {/* Many-to-Many */}
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="10" className="flex-shrink-0">
+                <line x1="0" y1="5" x2="18" y2="5" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
+                <line x1="0" y1="2" x2="3" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="0" y1="5" x2="3" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="0" y1="8" x2="3" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="2" x2="15" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="5" x2="15" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="8" x2="15" y2="5" stroke="#94a3b8" strokeWidth="1.5" />
+              </svg>
+              <span className="text-gray-600">N:M</span>
             </div>
           </div>
           {relationships.length > 0 && (
             <div className="border-t border-gray-200 pt-1 mt-1 text-gray-500">
-              <p className="font-medium text-gray-700">{relationships.length} relationship{relationships.length !== 1 ? 's' : ''}</p>
+              <p className="font-medium text-gray-700">{relationships.length} total</p>
             </div>
           )}
         </div>
