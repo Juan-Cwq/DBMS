@@ -185,30 +185,29 @@ export default function ERDiagram() {
         {/* Custom SVG markers for crow's foot notation */}
         <svg style={{ position: 'absolute', width: 0, height: 0 }}>
           <defs>
-            {/* Many side - crow's foot */}
+            {/* Many side - crow's foot (three lines forming <) */}
             <marker
               id="crowsfoot-many"
-              markerWidth="16"
-              markerHeight="16"
-              refX="8"
-              refY="8"
+              markerWidth="20"
+              markerHeight="20"
+              refX="0"
+              refY="10"
               orient="auto"
             >
-              <line x1="8" y1="3" x2="8" y2="13" stroke="#6b7280" strokeWidth="1.5" />
-              <line x1="0" y1="3" x2="8" y2="8" stroke="#6b7280" strokeWidth="1.5" />
-              <line x1="0" y1="13" x2="8" y2="8" stroke="#6b7280" strokeWidth="1.5" />
+              <line x1="0" y1="4" x2="10" y2="10" stroke="#6b7280" strokeWidth="2" />
+              <line x1="0" y1="10" x2="10" y2="10" stroke="#6b7280" strokeWidth="2" />
+              <line x1="0" y1="16" x2="10" y2="10" stroke="#6b7280" strokeWidth="2" />
             </marker>
-            {/* One side - single line */}
+            {/* One side - single perpendicular line | */}
             <marker
               id="crowsfoot-one"
-              markerWidth="16"
-              markerHeight="16"
-              refX="8"
-              refY="8"
+              markerWidth="20"
+              markerHeight="20"
+              refX="10"
+              refY="10"
               orient="auto"
             >
-              <line x1="8" y1="3" x2="8" y2="13" stroke="#6b7280" strokeWidth="1.5" />
-              <line x1="5" y1="3" x2="5" y2="13" stroke="#6b7280" strokeWidth="1.5" />
+              <line x1="10" y1="4" x2="10" y2="16" stroke="#6b7280" strokeWidth="2" />
             </marker>
           </defs>
         </svg>
