@@ -460,40 +460,34 @@ export default function ERDiagramSVG() {
         </g>
       </svg>
       
-      {/* Legend */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-xs">
-        <h4 className="font-semibold text-sm text-gray-800 mb-3">Legend</h4>
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-base">🔑</span>
-            <span className="text-gray-700">Primary Key (PK)</span>
+      {/* Legend - Compact version in bottom-left */}
+      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-md shadow-lg border border-gray-200 p-2 text-xs max-w-[180px]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">🔑</span>
+            <span className="text-gray-700">Primary Key</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-500 text-base">◆</span>
-            <span className="text-gray-700">Foreign Key (FK)</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-blue-500 text-sm">◆</span>
+            <span className="text-gray-700">Foreign Key</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400 text-base">◇</span>
-            <span className="text-gray-700">Regular Field</span>
-          </div>
-          <div className="border-t border-gray-200 pt-2 mt-2">
-            <div className="flex items-start gap-2 mb-1">
-              <svg width="40" height="20" className="flex-shrink-0">
-                <line x1="0" y1="10" x2="30" y2="10" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5,5" />
-                <line x1="0" y1="6" x2="8" y2="10" stroke="#94a3b8" strokeWidth="2" />
-                <line x1="0" y1="10" x2="8" y2="10" stroke="#94a3b8" strokeWidth="2" />
-                <line x1="0" y1="14" x2="8" y2="10" stroke="#94a3b8" strokeWidth="2" />
-                <line x1="30" y1="6" x2="30" y2="14" stroke="#94a3b8" strokeWidth="2" />
+          <div className="border-t border-gray-200 pt-1 mt-1">
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="12" className="flex-shrink-0">
+                <line x1="0" y1="6" x2="18" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
+                <line x1="0" y1="3" x2="5" y2="6" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="0" y1="6" x2="5" y2="6" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="0" y1="9" x2="5" y2="6" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="18" y1="3" x2="18" y2="9" stroke="#94a3b8" strokeWidth="1.5" />
               </svg>
-              <span className="text-gray-700">Many-to-One</span>
+              <span className="text-gray-600">◁ many | one</span>
             </div>
-            <p className="text-gray-500 text-xs ml-12">Crow's foot (◁) = many, line (|) = one</p>
           </div>
-          <div className="border-t border-gray-200 pt-2 mt-2 text-gray-500">
-            <p className="mb-1"><strong>Drag:</strong> Move tables</p>
-            <p className="mb-1"><strong>Ctrl + Scroll:</strong> Zoom</p>
-            <p><strong>Middle-click:</strong> Pan canvas</p>
-          </div>
+          {relationships.length > 0 && (
+            <div className="border-t border-gray-200 pt-1 mt-1 text-gray-500">
+              <p className="font-medium text-gray-700">{relationships.length} relationship{relationships.length !== 1 ? 's' : ''}</p>
+            </div>
+          )}
         </div>
       </div>
       
