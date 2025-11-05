@@ -27,10 +27,25 @@ export default function Dashboard() {
   const handleGenerateSQL = async (prompt) => {
     setIsLoading(true)
     try {
+      // Import database utilities
+      const { getTables, getTableStructure } = await import('../utils/database')
+      const { getCurrentDatabaseContext } = await import('../utils/databaseStorage')
+      
+      // Get current database context
+      const tables = getTables()
+      const tablesWithStructure = tables.map(table => ({
+        ...table,
+        structure: getTableStructure(table.name)
+      }))
+      const context = getCurrentDatabaseContext(tablesWithStructure)
+      
       const response = await fetch('/api/generate-sql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt,
+          context // Send current database context to AI
+        }),
       })
 
       const data = await response.json()

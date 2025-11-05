@@ -6,6 +6,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { initDatabase, executeQuery, getTableData } from '../utils/database'
 import DatabaseSidebar from './DatabaseSidebar'
 import ERDiagramSVG from './ERDiagramSVG'
+import DatabaseManager from './DatabaseManager'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -16,6 +17,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [executionTime, setExecutionTime] = useState(0)
   const [selectedTable, setSelectedTable] = useState(null)
   const [tableData, setTableData] = useState(null)
+  const [currentDatabaseId, setCurrentDatabaseId] = useState(null)
   
   const [savedQueries, setSavedQueries] = useState(() => {
     const saved = localStorage.getItem('schemacraft_saved_queries')
@@ -29,6 +31,12 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [copied, setCopied] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showDiagram, setShowDiagram] = useState(false)
+
+  const handleDatabaseLoaded = () => {
+    setRefreshTrigger(prev => prev + 1)
+    setError(null)
+    setResults([])
+  }
 
   useEffect(() => {
     initDatabase().then(() => {
@@ -208,7 +216,12 @@ export default function QueryRunner({ initialQuery = '' }) {
           <div className="card-body">
             <div className="flex items-center justify-between mb-4">
               <h3 className="card-title text-lg">Query Editor</h3>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <DatabaseManager 
+                  onLoadDatabase={handleDatabaseLoaded}
+                  currentDatabaseId={currentDatabaseId}
+                  setCurrentDatabaseId={setCurrentDatabaseId}
+                />
                 <button
                   onClick={handleCopy}
                   className="btn btn-ghost btn-sm btn-circle"
