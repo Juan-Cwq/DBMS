@@ -122,32 +122,30 @@ export default function ERDiagram() {
       id: `e${idx}`,
       source: rel.from,
       target: rel.to,
-      type: 'smoothstep',
-      animated: true,
+      type: 'step',
+      animated: false,
       style: { 
         stroke: '#3b82f6', 
-        strokeWidth: 3,
+        strokeWidth: 2,
+        strokeDasharray: '5,5', // Dashed line like in the image
+      },
+      markerStart: {
+        type: 'crowsfoot', // Many side (FK)
+        color: '#3b82f6',
       },
       markerEnd: {
-        type: MarkerType.ArrowClosed,
+        type: 'one', // One side (PK)
         color: '#3b82f6',
-        width: 25,
-        height: 25,
       },
-      label: `${rel.fromColumn} → ${rel.toColumn}`,
+      label: `${rel.fromColumn}`,
       labelStyle: { 
-        fill: '#1e40af', 
-        fontWeight: 700, 
-        fontSize: 12,
-        backgroundColor: 'white',
-        padding: '4px 8px',
-        borderRadius: '4px',
+        fill: '#3b82f6', 
+        fontWeight: 600, 
+        fontSize: 10,
       },
       labelBgStyle: { 
         fill: 'white', 
-        fillOpacity: 0.95,
-        rx: 4,
-        ry: 4,
+        fillOpacity: 0.9,
       },
     }))
 
@@ -198,7 +196,37 @@ export default function ERDiagram() {
         fitView
         minZoom={0.5}
         maxZoom={1.5}
+        connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '5,5' }}
       >
+        {/* Custom SVG markers for crow's foot notation */}
+        <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+          <defs>
+            {/* Crow's foot (many) marker */}
+            <marker
+              id="crowsfoot"
+              markerWidth="20"
+              markerHeight="20"
+              refX="10"
+              refY="10"
+              orient="auto"
+            >
+              <path d="M 0 5 L 10 10 L 0 15" stroke="#3b82f6" strokeWidth="2" fill="none" />
+              <line x1="10" y1="10" x2="15" y2="10" stroke="#3b82f6" strokeWidth="2" />
+            </marker>
+            {/* One marker */}
+            <marker
+              id="one"
+              markerWidth="20"
+              markerHeight="20"
+              refX="10"
+              refY="10"
+              orient="auto"
+            >
+              <line x1="10" y1="5" x2="10" y2="15" stroke="#3b82f6" strokeWidth="2" />
+            </marker>
+          </defs>
+        </svg>
+        
         <Background color="#e5e7eb" gap={16} />
         <Controls />
         <MiniMap 
