@@ -7,6 +7,7 @@ import { initDatabase, executeQuery, getTableData } from '../utils/database'
 import DatabaseSidebar from './DatabaseSidebar'
 import ERDiagramSVG from './ERDiagramSVG'
 import DatabaseManager from './DatabaseManager'
+import AIChatSidebar from './AIChatSidebar'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -31,11 +32,23 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [copied, setCopied] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showDiagram, setShowDiagram] = useState(false)
+  const [aiSidebarCollapsed, setAiSidebarCollapsed] = useState(false)
 
-  const handleDatabaseLoaded = () => {
+  const handleDatabaseLoaded = (database) => {
     setRefreshTrigger(prev => prev + 1)
     setError(null)
     setResults([])
+    // Set the schema SQL in the query editor
+    if (database?.schema) {
+      setQuery(database.schema)
+    }
+    // Auto-show the diagram
+    setShowDiagram(true)
+  }
+
+  const handleAIGeneratedSQL = (sql) => {
+    setQuery(sql)
+    setShowDiagram(true)
   }
 
   useEffect(() => {
@@ -199,9 +212,16 @@ export default function QueryRunner({ initialQuery = '' }) {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 h-[calc(100vh-250px)]">
+    <div className="flex gap-4 h-[calc(100vh-250px)]">
+      {/* AI Chat Sidebar */}
+      <AIChatSidebar 
+        onSQLGenerated={handleAIGeneratedSQL}
+        isCollapsed={aiSidebarCollapsed}
+        setIsCollapsed={setAiSidebarCollapsed}
+      />
+
       {/* Database Sidebar */}
-      <div className="col-span-3 card bg-base-200 shadow-xl overflow-hidden">
+      <div className="w-64 card bg-base-200 shadow-xl overflow-hidden flex-shrink-0">
         <DatabaseSidebar 
           key={refreshTrigger}
           onTableSelect={handleTableSelect}
@@ -210,7 +230,7 @@ export default function QueryRunner({ initialQuery = '' }) {
       </div>
 
       {/* Main Content */}
-      <div className="col-span-9 space-y-4">
+      <div className="flex-1 space-y-4 overflow-auto">
         {/* Query Editor */}
         <div className="card bg-base-200 shadow-xl">
           <div className="card-body">

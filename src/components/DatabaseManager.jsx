@@ -74,7 +74,10 @@ export default function DatabaseManager({ onLoadDatabase, currentDatabaseId, set
         setShowManager(false)
         
         if (onLoadDatabase) {
-          onLoadDatabase(database)
+          onLoadDatabase({
+            ...database,
+            schema: database.schema // Pass the schema SQL to display in editor
+          })
         }
         
         alert('Database loaded successfully!')
