@@ -5,7 +5,9 @@ import ReactFlow, {
   MiniMap,
   useNodesState,
   useEdgesState,
-  MarkerType
+  MarkerType,
+  Handle,
+  Position
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { Database, Key, Maximize2, Download, X } from 'lucide-react'
@@ -15,6 +17,12 @@ import { getTables, getTableStructure } from '../utils/database'
 const TableNode = ({ data }) => {
   return (
     <div className="bg-white rounded-lg shadow-xl border-2 border-gray-300" style={{ minWidth: '280px' }}>
+      {/* Connection handles */}
+      <Handle type="target" position={Position.Left} style={{ background: '#3b82f6', width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#3b82f6', width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Top} style={{ background: '#3b82f6', width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: '#3b82f6', width: 10, height: 10 }} />
+      
       <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
         <h3 className="font-bold text-center">{data.label}</h3>
       </div>
