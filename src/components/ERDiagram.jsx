@@ -125,28 +125,12 @@ export default function ERDiagram() {
       type: 'step',
       animated: false,
       style: { 
-        stroke: '#3b82f6', 
+        stroke: '#6b7280', 
         strokeWidth: 2,
-        strokeDasharray: '5,5', // Dashed line like in the image
+        strokeDasharray: '8,4',
       },
-      markerStart: {
-        type: 'crowsfoot', // Many side (FK)
-        color: '#3b82f6',
-      },
-      markerEnd: {
-        type: 'one', // One side (PK)
-        color: '#3b82f6',
-      },
-      label: `${rel.fromColumn}`,
-      labelStyle: { 
-        fill: '#3b82f6', 
-        fontWeight: 600, 
-        fontSize: 10,
-      },
-      labelBgStyle: { 
-        fill: 'white', 
-        fillOpacity: 0.9,
-      },
+      markerStart: 'url(#crowsfoot-many)',
+      markerEnd: 'url(#crowsfoot-one)',
     }))
 
     setNodes(newNodes)
@@ -201,28 +185,30 @@ export default function ERDiagram() {
         {/* Custom SVG markers for crow's foot notation */}
         <svg style={{ position: 'absolute', width: 0, height: 0 }}>
           <defs>
-            {/* Crow's foot (many) marker */}
+            {/* Many side - crow's foot */}
             <marker
-              id="crowsfoot"
-              markerWidth="20"
-              markerHeight="20"
-              refX="10"
-              refY="10"
+              id="crowsfoot-many"
+              markerWidth="16"
+              markerHeight="16"
+              refX="8"
+              refY="8"
               orient="auto"
             >
-              <path d="M 0 5 L 10 10 L 0 15" stroke="#3b82f6" strokeWidth="2" fill="none" />
-              <line x1="10" y1="10" x2="15" y2="10" stroke="#3b82f6" strokeWidth="2" />
+              <line x1="8" y1="3" x2="8" y2="13" stroke="#6b7280" strokeWidth="1.5" />
+              <line x1="0" y1="3" x2="8" y2="8" stroke="#6b7280" strokeWidth="1.5" />
+              <line x1="0" y1="13" x2="8" y2="8" stroke="#6b7280" strokeWidth="1.5" />
             </marker>
-            {/* One marker */}
+            {/* One side - single line */}
             <marker
-              id="one"
-              markerWidth="20"
-              markerHeight="20"
-              refX="10"
-              refY="10"
+              id="crowsfoot-one"
+              markerWidth="16"
+              markerHeight="16"
+              refX="8"
+              refY="8"
               orient="auto"
             >
-              <line x1="10" y1="5" x2="10" y2="15" stroke="#3b82f6" strokeWidth="2" />
+              <line x1="8" y1="3" x2="8" y2="13" stroke="#6b7280" strokeWidth="1.5" />
+              <line x1="5" y1="3" x2="5" y2="13" stroke="#6b7280" strokeWidth="1.5" />
             </marker>
           </defs>
         </svg>
