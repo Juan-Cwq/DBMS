@@ -99,14 +99,14 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
     <motion.div
       initial={false}
       animate={{ width: isCollapsed ? '48px' : '320px' }}
-      className="relative h-full bg-base-200 border-r border-base-300 flex flex-col"
+      className="relative h-full bg-base-200 border-l border-base-300 flex flex-col"
     >
       {/* Collapse/Expand Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-4 z-10 btn btn-circle btn-xs bg-base-100 border-base-300 hover:bg-base-200"
+        className="absolute -left-3 top-4 z-10 btn btn-circle btn-xs bg-base-100 border-base-300 hover:bg-base-200"
       >
-        {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        {isCollapsed ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
       </button>
 
       {isCollapsed ? (

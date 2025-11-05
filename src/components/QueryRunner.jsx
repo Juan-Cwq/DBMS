@@ -213,13 +213,6 @@ export default function QueryRunner({ initialQuery = '' }) {
 
   return (
     <div className="flex gap-4 h-[calc(100vh-250px)]">
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar 
-        onSQLGenerated={handleAIGeneratedSQL}
-        isCollapsed={aiSidebarCollapsed}
-        setIsCollapsed={setAiSidebarCollapsed}
-      />
-
       {/* Database Sidebar */}
       <div className="w-64 card bg-base-200 shadow-xl overflow-hidden flex-shrink-0">
         <DatabaseSidebar 
@@ -468,6 +461,13 @@ export default function QueryRunner({ initialQuery = '' }) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* AI Chat Sidebar - Right Side */}
+      <AIChatSidebar 
+        onSQLGenerated={handleAIGeneratedSQL}
+        isCollapsed={aiSidebarCollapsed}
+        setIsCollapsed={setAiSidebarCollapsed}
+      />
     </div>
   )
 }
