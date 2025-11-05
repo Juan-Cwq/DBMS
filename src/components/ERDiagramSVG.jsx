@@ -319,12 +319,15 @@ export default function ERDiagramSVG() {
   }
   
   const handleWheel = (e) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    setTransform(prev => ({
-      ...prev,
-      zoom: Math.max(0.1, Math.min(2, prev.zoom * delta))
-    }))
+    // Only zoom when Ctrl/Cmd is pressed, otherwise allow normal scrolling
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? 0.9 : 1.1
+      setTransform(prev => ({
+        ...prev,
+        zoom: Math.max(0.1, Math.min(2, prev.zoom * delta))
+      }))
+    }
   }
   
   const handlePanStart = (e) => {
@@ -457,12 +460,49 @@ export default function ERDiagramSVG() {
         </g>
       </svg>
       
+      {/* Legend */}
+      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-xs">
+        <h4 className="font-semibold text-sm text-gray-800 mb-3">Legend</h4>
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🔑</span>
+            <span className="text-gray-700">Primary Key (PK)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-blue-500 text-base">◆</span>
+            <span className="text-gray-700">Foreign Key (FK)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-base">◇</span>
+            <span className="text-gray-700">Regular Field</span>
+          </div>
+          <div className="border-t border-gray-200 pt-2 mt-2">
+            <div className="flex items-start gap-2 mb-1">
+              <svg width="40" height="20" className="flex-shrink-0">
+                <line x1="0" y1="10" x2="30" y2="10" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5,5" />
+                <line x1="0" y1="6" x2="8" y2="10" stroke="#94a3b8" strokeWidth="2" />
+                <line x1="0" y1="10" x2="8" y2="10" stroke="#94a3b8" strokeWidth="2" />
+                <line x1="0" y1="14" x2="8" y2="10" stroke="#94a3b8" strokeWidth="2" />
+                <line x1="30" y1="6" x2="30" y2="14" stroke="#94a3b8" strokeWidth="2" />
+              </svg>
+              <span className="text-gray-700">Many-to-One</span>
+            </div>
+            <p className="text-gray-500 text-xs ml-12">Crow's foot (◁) = many, line (|) = one</p>
+          </div>
+          <div className="border-t border-gray-200 pt-2 mt-2 text-gray-500">
+            <p className="mb-1"><strong>Drag:</strong> Move tables</p>
+            <p className="mb-1"><strong>Ctrl + Scroll:</strong> Zoom</p>
+            <p><strong>Middle-click:</strong> Pan canvas</p>
+          </div>
+        </div>
+      </div>
+      
       {/* Zoom controls */}
       <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2">
-        <button onClick={zoomIn} className="btn btn-sm btn-circle" title="Zoom In">
+        <button onClick={zoomIn} className="btn btn-sm btn-circle" title="Zoom In (Ctrl + Scroll)">
           <ZoomIn className="w-4 h-4" />
         </button>
-        <button onClick={zoomOut} className="btn btn-sm btn-circle" title="Zoom Out">
+        <button onClick={zoomOut} className="btn btn-sm btn-circle" title="Zoom Out (Ctrl + Scroll)">
           <ZoomOut className="w-4 h-4" />
         </button>
         <button onClick={resetView} className="btn btn-sm btn-circle" title="Reset View">
