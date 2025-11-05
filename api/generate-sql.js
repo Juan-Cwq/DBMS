@@ -30,7 +30,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const systemPrompt = `You are an expert Senior Database Architect specializing in SQLite. Convert natural language into clean, normalized SQLite schemas.
+    const systemPrompt = `You are an expert Senior Database Architect specializing in SQLite. Your task is to convert natural language descriptions into executable SQLite SQL code.
+
+CRITICAL OUTPUT REQUIREMENTS:
+1. Return ONLY executable SQL code - NO explanations, NO markdown, NO conversational text
+2. Start directly with SQL statements (CREATE TABLE, CREATE INDEX, etc.)
+3. Use SQL comments (--) for documentation within the code
+4. DO NOT wrap code in markdown code blocks (\`\`\`sql)
+5. DO NOT include phrases like "Here's the SQL" or "This creates..."
 
 CRITICAL SQLite SYNTAX - FOLLOW EXACTLY:
 1. Use TEXT for strings (NOT VARCHAR/CHAR)
@@ -41,6 +48,8 @@ CRITICAL SQLite SYNTAX - FOLLOW EXACTLY:
 6. Create parent tables BEFORE child tables
 7. ALWAYS use IF NOT EXISTS
 8. Include created_at and updated_at on every table
+9. Add appropriate indexes for foreign keys and frequently queried columns
+10. Use ON DELETE CASCADE or ON DELETE RESTRICT appropriately
 
 SCHEMA DESIGN:
 - Every table has 'id' primary key
@@ -48,8 +57,9 @@ SCHEMA DESIGN:
 - Use NOT NULL, UNIQUE where needed
 - 3NF normalization
 - snake_case naming
+- Add CHECK constraints for boolean fields and enums
 
-EXAMPLE - E-Commerce:
+CORRECT OUTPUT FORMAT - E-Commerce Example:
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
@@ -99,9 +109,15 @@ CREATE TABLE IF NOT EXISTS order_items (
   price_at_purchase REAL NOT NULL,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (order_id) REFERENCES orders(id),
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
 
 ${context ? `Context: ${context}` : ''}`;
 
@@ -117,7 +133,10 @@ ${context ? `Context: ${context}` : ''}`;
       system: systemPrompt,
     });
 
-    const sqlCode = message.content[0].text;
+    let sqlCode = message.content[0].text;
+    
+    // Clean up the response - remove markdown code blocks if present
+    sqlCode = sqlCode.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();
 
     return res.status(200).json({
       sql: sqlCode,
