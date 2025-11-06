@@ -24,6 +24,15 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Check if API key is configured
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not set');
+      return res.status(500).json({ 
+        error: 'API key not configured',
+        message: 'ANTHROPIC_API_KEY environment variable is missing'
+      });
+    }
+
     const { prompt, context } = req.body;
 
     if (!prompt) {
@@ -175,9 +184,15 @@ ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to un
     });
   } catch (error) {
     console.error('Error generating SQL:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     return res.status(500).json({
       error: 'Failed to generate SQL',
       message: error.message,
+      details: error.name
     });
   }
 }
