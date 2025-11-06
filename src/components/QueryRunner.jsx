@@ -77,9 +77,33 @@ export default function QueryRunner({ initialQuery = '' }) {
     const startTime = performance.now()
     
     try {
-      // Check if input is DBML and convert to SQL
+      // Check if input contains multiple parts (DBML, DDL, DML) separated by ---
       let sqlToExecute = query
-      if (isDBML(query)) {
+      const parts = query.split('---').map(p => p.trim())
+      
+      if (parts.length === 3) {
+        // Three-part format: DBML, DDL, DML
+        const [dbml, ddl, dml] = parts
+        
+        // Clear existing tables
+        const existingTables = getTables()
+        for (const table of existingTables) {
+          executeQuery(`DROP TABLE IF EXISTS ${table.name}`)
+        }
+        
+        // Execute DDL (schema creation)
+        sqlToExecute = ddl
+        executeQuery(ddl)
+        
+        // Execute DML (sample data) if present
+        if (dml && dml.trim()) {
+          executeQuery(dml)
+        }
+        
+        // Update query textarea with DDL
+        setQuery(ddl)
+      } else if (isDBML(query)) {
+        // Pure DBML format
         try {
           // Clear existing tables when loading DBML
           const existingTables = getTables()

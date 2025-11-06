@@ -10,6 +10,10 @@ import QueryRunner from './QueryRunner'
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('sql')
   const [generatedSQL, setGeneratedSQL] = useState('')
+  const [generatedDBML, setGeneratedDBML] = useState('')
+  const [generatedDDL, setGeneratedDDL] = useState('')
+  const [generatedDML, setGeneratedDML] = useState('')
+  const [outputTab, setOutputTab] = useState('ddl') // ddl, dbml, dml, all
   const [schemaData, setSchemaData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [stats, setStats] = useState({
@@ -51,7 +55,11 @@ export default function Dashboard() {
       const data = await response.json()
       
       if (data.sql) {
-        setGeneratedSQL(data.sql)
+        setGeneratedSQL(data.sql) // Full response
+        setGeneratedDBML(data.dbml || '') // Part 1: DBML
+        setGeneratedDDL(data.ddl || '') // Part 2: DDL
+        setGeneratedDML(data.dml || '') // Part 3: DML
+        setOutputTab('ddl') // Default to DDL view
         setStats(prev => ({
           totalQueries: prev.totalQueries + 1,
           tokensUsed: prev.tokensUsed + (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
@@ -173,11 +181,46 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+            className="space-y-4"
           >
+            {/* Output Tab Selector */}
+            {generatedSQL && (
+              <div className="tabs tabs-boxed bg-base-300 p-1">
+                <button
+                  onClick={() => setOutputTab('dbml')}
+                  className={`tab tab-sm ${outputTab === 'dbml' ? 'tab-active' : ''}`}
+                >
+                  DBML (Diagram)
+                </button>
+                <button
+                  onClick={() => setOutputTab('ddl')}
+                  className={`tab tab-sm ${outputTab === 'ddl' ? 'tab-active' : ''}`}
+                >
+                  DDL (Schema)
+                </button>
+                <button
+                  onClick={() => setOutputTab('dml')}
+                  className={`tab tab-sm ${outputTab === 'dml' ? 'tab-active' : ''}`}
+                >
+                  DML (Data)
+                </button>
+                <button
+                  onClick={() => setOutputTab('all')}
+                  className={`tab tab-sm ${outputTab === 'all' ? 'tab-active' : ''}`}
+                >
+                  All
+                </button>
+              </div>
+            )}
+            
             <CodeTerminal
-              code={generatedSQL}
-              language="sql"
+              code={
+                outputTab === 'dbml' ? generatedDBML :
+                outputTab === 'ddl' ? generatedDDL :
+                outputTab === 'dml' ? generatedDML :
+                generatedSQL
+              }
+              language={outputTab === 'dbml' ? 'dbml' : 'sql'}
               isLoading={isLoading}
             />
           </motion.div>
