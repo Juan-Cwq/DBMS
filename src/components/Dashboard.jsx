@@ -59,6 +59,13 @@ export default function Dashboard() {
       }
 
       const data = await response.json()
+      console.log('Received data:', { 
+        hasSql: !!data.sql, 
+        sqlLength: data.sql?.length,
+        hasDbml: !!data.dbml,
+        hasDdl: !!data.ddl,
+        hasDml: !!data.dml
+      })
       
       if (data.sql) {
         setGeneratedSQL(data.sql) // Full response
@@ -66,6 +73,7 @@ export default function Dashboard() {
         setGeneratedDDL(data.ddl || '') // Part 2: DDL
         setGeneratedDML(data.dml || '') // Part 3: DML
         setOutputTab('ddl') // Default to DDL view
+        console.log('State updated with SQL code')
         setStats(prev => ({
           totalQueries: prev.totalQueries + 1,
           tokensUsed: prev.tokensUsed + (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
