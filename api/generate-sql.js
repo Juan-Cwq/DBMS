@@ -159,7 +159,7 @@ ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to un
     
     const message = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307', // Using Claude 3 Haiku (known working model)
-      max_tokens: 8192,
+      max_tokens: 4096, // Haiku max is 4096
       messages: [
         {
           role: 'user',
