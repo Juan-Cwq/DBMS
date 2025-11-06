@@ -44,7 +44,7 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
       const context = getCurrentDatabaseContext(tablesWithStructure)
 
       // Call AI API
-      const response = await fetch('/api/generate-sql', {
+      const response = await fetch('http://localhost:3001/api/generate-sql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

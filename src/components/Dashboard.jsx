@@ -43,7 +43,7 @@ export default function Dashboard() {
       }))
       const context = getCurrentDatabaseContext(tablesWithStructure)
       
-      const response = await fetch('/api/generate-sql', {
+      const response = await fetch('http://localhost:3001/api/generate-sql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -89,7 +89,7 @@ export default function Dashboard() {
         setSchemaData(data.schema)
         
         // Also generate the SQL for the schema
-        const sqlResponse = await fetch('/api/generate-sql', {
+        const sqlResponse = await fetch('http://localhost:3001/api/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
