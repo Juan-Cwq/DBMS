@@ -53,6 +53,11 @@ export default function Dashboard() {
         }),
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.message || errorData.error || `Server error: ${response.status}`)
+      }
+
       const data = await response.json()
       
       if (data.sql) {
@@ -69,7 +74,8 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error generating SQL:', error)
-      setGeneratedSQL(`-- Error: ${error.message}`)
+      setGeneratedSQL(`-- Error: ${error.message}\n-- Please check the console for more details.`)
+      alert(`Error: ${error.message}`)
     } finally {
       setIsLoading(false)
     }
