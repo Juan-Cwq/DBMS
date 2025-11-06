@@ -8,6 +8,7 @@ import DatabaseSidebar from './DatabaseSidebar'
 import ERDiagramSVG from './ERDiagramSVG'
 import DatabaseManager from './DatabaseManager'
 import AIChatSidebar from './AIChatSidebar'
+import { isDBML, dbmlToSQL } from '../utils/dbmlParser'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -76,7 +77,19 @@ export default function QueryRunner({ initialQuery = '' }) {
     const startTime = performance.now()
     
     try {
-      const queryResults = executeQuery(query)
+      // Check if input is DBML and convert to SQL
+      let sqlToExecute = query
+      if (isDBML(query)) {
+        try {
+          sqlToExecute = dbmlToSQL(query)
+          // Update the query textarea with the converted SQL
+          setQuery(sqlToExecute)
+        } catch (dbmlError) {
+          throw new Error(`DBML parsing error: ${dbmlError.message}`)
+        }
+      }
+      
+      const queryResults = executeQuery(sqlToExecute)
       const endTime = performance.now()
       setExecutionTime(endTime - startTime)
       
