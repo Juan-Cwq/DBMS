@@ -36,10 +36,16 @@ export function parseDBML(dbmlCode) {
       const columnMatch = line.match(/^(\w+)\s+(int|varchar|text|decimal|real|integer|datetime|timestamp|boolean|bool)(\s+\[([^\]]+)\])?/)
       if (columnMatch) {
         const [, name, type, , constraints] = columnMatch
+        
+        // Auto-detect primary keys by common naming patterns
+        const isPrimaryKey = name.toLowerCase().endsWith('id') && 
+                            currentTable.columns.length === 0 && 
+                            !constraints
+        
         const column = {
           name,
           type: mapDBMLTypeToSQLite(type),
-          constraints: parseConstraints(constraints)
+          constraints: isPrimaryKey ? ['PRIMARY KEY'] : parseConstraints(constraints)
         }
         currentTable.columns.push(column)
       }
@@ -173,13 +179,8 @@ export function dbmlToSQL(dbmlCode) {
     return withFK ? withFK.sql : stmt
   })
   
-  // Add created_at and updated_at to all tables
-  const enhancedStatements = finalStatements.map(stmt => {
-    // Insert timestamp columns before the closing parenthesis
-    return stmt.replace(/\n\);$/, ',\n  created_at TEXT DEFAULT (datetime(\'now\')),\n  updated_at TEXT DEFAULT (datetime(\'now\'))\n);')
-  })
-  
-  return enhancedStatements.join('\n\n')
+  // Don't add timestamps automatically - let user define their own schema
+  return finalStatements.join('\n\n')
 }
 
 // Check if input is DBML
