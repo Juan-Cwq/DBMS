@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Bot, User, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getTables, getTableStructure } from '../utils/database'
 import { getCurrentDatabaseContext } from '../utils/databaseStorage'
+import { API_ENDPOINTS } from '../config/api'
 
 export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollapsed }) {
   const [messages, setMessages] = useState([
@@ -44,7 +45,7 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
       const context = getCurrentDatabaseContext(tablesWithStructure)
 
       // Call AI API
-      const response = await fetch('http://localhost:3001/api/generate-sql', {
+      const response = await fetch(API_ENDPOINTS.generateSQL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

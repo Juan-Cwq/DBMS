@@ -6,6 +6,7 @@ import SchemaVisualizer from './SchemaVisualizer'
 import CodeTerminal from './CodeTerminal'
 import StatsPanel from './StatsPanel'
 import QueryRunner from './QueryRunner'
+import { API_ENDPOINTS } from '../config/api'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('sql')
@@ -43,7 +44,7 @@ export default function Dashboard() {
       }))
       const context = getCurrentDatabaseContext(tablesWithStructure)
       
-      const response = await fetch('http://localhost:3001/api/generate-sql', {
+      const response = await fetch(API_ENDPOINTS.generateSQL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -89,7 +90,7 @@ export default function Dashboard() {
         setSchemaData(data.schema)
         
         // Also generate the SQL for the schema
-        const sqlResponse = await fetch('http://localhost:3001/api/generate-sql', {
+        const sqlResponse = await fetch(API_ENDPOINTS.generateSQL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
