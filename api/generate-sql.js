@@ -144,7 +144,7 @@ INSERT INTO posts (title, body, user_id) VALUES
 ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to understand existing tables and relationships when generating new schema elements.` : ''}`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-7-sonnet-20250219',
+      model: 'claude-3-5-sonnet-20241022', // Using Claude 3.5 Sonnet (latest stable)
       max_tokens: 8192,
       messages: [
         {
