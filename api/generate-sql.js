@@ -157,7 +157,7 @@ ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to un
     console.log('API Key starts with:', process.env.ANTHROPIC_API_KEY?.substring(0, 15));
     
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022', // Using Claude 3.5 Sonnet (latest stable)
+      model: 'claude-3-5-sonnet-20240620', // Using Claude 3.5 Sonnet (correct model ID)
       max_tokens: 8192,
       messages: [
         {
