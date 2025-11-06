@@ -152,6 +152,10 @@ INSERT INTO posts (title, body, user_id) VALUES
 
 ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to understand existing tables and relationships when generating new schema elements.` : ''}`;
 
+    console.log('Calling Anthropic API with prompt length:', prompt.length);
+    console.log('API Key present:', !!process.env.ANTHROPIC_API_KEY);
+    console.log('API Key starts with:', process.env.ANTHROPIC_API_KEY?.substring(0, 15));
+    
     const message = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022', // Using Claude 3.5 Sonnet (latest stable)
       max_tokens: 8192,
@@ -163,6 +167,8 @@ ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to un
       ],
       system: systemPrompt,
     });
+    
+    console.log('Anthropic API response received');
 
     let response = message.content[0].text;
     
