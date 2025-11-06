@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Save, History, Trash2, Download, Copy, Check, AlertCircle, CheckCircle, Network } from 'lucide-react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { initDatabase, executeQuery, getTableData } from '../utils/database'
+import { initDatabase, executeQuery, getTableData, getTables } from '../utils/database'
 import DatabaseSidebar from './DatabaseSidebar'
 import ERDiagramSVG from './ERDiagramSVG'
 import DatabaseManager from './DatabaseManager'
@@ -81,6 +81,12 @@ export default function QueryRunner({ initialQuery = '' }) {
       let sqlToExecute = query
       if (isDBML(query)) {
         try {
+          // Clear existing tables when loading DBML
+          const existingTables = getTables()
+          for (const table of existingTables) {
+            executeQuery(`DROP TABLE IF EXISTS ${table.name}`)
+          }
+          
           sqlToExecute = dbmlToSQL(query)
           // Update the query textarea with the converted SQL
           setQuery(sqlToExecute)
