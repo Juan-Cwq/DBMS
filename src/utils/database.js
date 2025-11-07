@@ -46,7 +46,7 @@ export function executeQuery(sql) {
     
     // Clean and normalize SQL for SQLite
     let normalizedSQL = sql
-      // Data type conversions
+      // Data type conversions (order matters!)
       .replace(/VARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT') // VARCHAR -> TEXT
       .replace(/CHAR\s*\(\s*\d+\s*\)/gi, 'TEXT') // CHAR -> TEXT
       .replace(/DATETIME/gi, 'TEXT') // DATETIME -> TEXT
@@ -58,6 +58,10 @@ export function executeQuery(sql) {
       .replace(/AUTO_INCREMENT/gi, 'AUTOINCREMENT') // MySQL -> SQLite
       .replace(/INT\b/gi, 'INTEGER') // INT -> INTEGER (important for PRIMARY KEY)
       
+      // Boolean values
+      .replace(/\bTRUE\b/gi, '1') // TRUE -> 1
+      .replace(/\bFALSE\b/gi, '0') // FALSE -> 0
+      
       // Add IF NOT EXISTS to CREATE TABLE statements
       .replace(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE TABLE IF NOT EXISTS $1')
       
@@ -68,7 +72,10 @@ export function executeQuery(sql) {
       .replace(/`/g, '')
       
       // Fix CURRENT_TIMESTAMP
-      .replace(/DEFAULT\s+CURRENT_TIMESTAMP/gi, "DEFAULT (datetime('now'))");
+      .replace(/DEFAULT\s+CURRENT_TIMESTAMP/gi, "DEFAULT (datetime('now'))")
+      
+      // Fix timestamp literals in INSERT statements (convert to SQLite format)
+      .replace(/'(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})'/g, "'$1 $2'"); // Already correct format, just ensure consistency
     
     const statements = normalizedSQL.split(';').filter(s => s.trim());
     
