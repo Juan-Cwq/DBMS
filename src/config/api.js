@@ -9,4 +9,5 @@ export const API_ENDPOINTS = {
   generateSQL: `${API_BASE_URL}/generate-sql`,
   generateSchema: `${API_BASE_URL}/generate-schema`,
   optimizeSQL: `${API_BASE_URL}/optimize-sql`,
+  executePostgres: `${API_BASE_URL}/execute-postgres`,
 }

@@ -8,8 +8,10 @@ import DatabaseSidebar from './DatabaseSidebar'
 import ERDiagramSVG from './ERDiagramSVG'
 import DatabaseManager from './DatabaseManager'
 import AIChatSidebar from './AIChatSidebar'
+import PostgresConnection from './PostgresConnection'
 import { isDBML, dbmlToSQL } from '../utils/dbmlParser'
 import { convertSQLDialect, DB_TYPES } from '../utils/sqlDialects'
+import { API_ENDPOINTS } from '../config/api'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -22,6 +24,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [tableData, setTableData] = useState(null)
   const [currentDatabaseId, setCurrentDatabaseId] = useState(null)
   const [sourceDbType, setSourceDbType] = useState(DB_TYPES.SQLITE)
+  const [postgresConnection, setPostgresConnection] = useState(null)
   
   const [savedQueries, setSavedQueries] = useState(() => {
     const saved = localStorage.getItem('schemacraft_saved_queries')
@@ -76,7 +79,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   }, [initialQuery])
 
   const handleRunQuery = async () => {
-    if (!query.trim() || !dbInitialized) return
+    if (!query.trim()) return
 
     setIsRunning(true)
     setError(null)
@@ -85,6 +88,46 @@ export default function QueryRunner({ initialQuery = '' }) {
     const startTime = performance.now()
     
     try {
+      // If connected to PostgreSQL, execute there
+      if (postgresConnection?.connected) {
+        const response = await fetch(API_ENDPOINTS.executePostgres, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'execute',
+            connectionId: postgresConnection.connectionId,
+            query: query
+          })
+        })
+
+        const data = await response.json()
+        
+        if (!data.success) {
+          throw new Error(data.message || 'Query execution failed')
+        }
+
+        const endTime = performance.now()
+        setExecutionTime(endTime - startTime)
+
+        // Format PostgreSQL results
+        const formattedResults = [{
+          type: data.command?.toLowerCase() || 'query',
+          columns: data.fields?.map(f => f.name) || [],
+          rows: data.rows?.map(row => Object.values(row)) || [],
+          rowCount: data.rowCount || 0,
+          message: `${data.command} completed successfully`
+        }]
+
+        setResults(formattedResults)
+        addToHistory(query, true)
+        setRefreshTrigger(prev => prev + 1)
+        setIsRunning(false)
+        return
+      }
+
+      // Otherwise, execute in SQLite
+      if (!dbInitialized) return
+
       // Convert SQL to SQLite if needed
       let sqlToExecute = query
       
@@ -322,6 +365,11 @@ export default function QueryRunner({ initialQuery = '' }) {
                   <History className="w-4 h-4" />
                   {showHistory ? 'Hide' : 'Show'} History
                 </button>
+                
+                {/* PostgreSQL Connection */}
+                <div className="ml-auto">
+                  <PostgresConnection onConnectionChange={setPostgresConnection} />
+                </div>
               </div>
             </div>
 
@@ -338,11 +386,11 @@ export default function QueryRunner({ initialQuery = '' }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleRunQuery}
-                disabled={!query.trim() || isRunning || !dbInitialized}
+                disabled={!query.trim() || isRunning || (!dbInitialized && !postgresConnection?.connected)}
                 className="btn btn-primary gap-2"
               >
                 <Play className="w-4 h-4" />
-                {isRunning ? 'Running...' : 'Run Query'}
+                {isRunning ? 'Running...' : postgresConnection?.connected ? 'Run on PostgreSQL' : 'Run Query'}
               </motion.button>
 
               <motion.button
