@@ -8,7 +8,7 @@ import DatabaseSidebar from './DatabaseSidebar'
 import ERDiagramSVG from './ERDiagramSVG'
 import DatabaseManager from './DatabaseManager'
 import AIChatSidebar from './AIChatSidebar'
-import PostgresConnection from './PostgresConnection'
+import DatabaseConnection from './DatabaseConnection'
 import { isDBML, dbmlToSQL } from '../utils/dbmlParser'
 import { convertSQLDialect, DB_TYPES } from '../utils/sqlDialects'
 import { API_ENDPOINTS } from '../config/api'
@@ -88,9 +88,13 @@ export default function QueryRunner({ initialQuery = '' }) {
     const startTime = performance.now()
     
     try {
-      // If connected to PostgreSQL, execute there
+      // If connected to PostgreSQL or MySQL, execute there
       if (postgresConnection?.connected) {
-        const response = await fetch(API_ENDPOINTS.executePostgres, {
+        const endpoint = postgresConnection.dbType === 'mysql' 
+          ? `${API_ENDPOINTS.generateSQL.replace('/generate-sql', '')}/execute-mysql`
+          : API_ENDPOINTS.executePostgres;
+          
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -366,9 +370,10 @@ export default function QueryRunner({ initialQuery = '' }) {
                   {showHistory ? 'Hide' : 'Show'} History
                 </button>
                 
-                {/* PostgreSQL Connection */}
-                <div className="ml-auto">
-                  <PostgresConnection onConnectionChange={setPostgresConnection} />
+                {/* Database Connections */}
+                <div className="ml-auto flex gap-2">
+                  <DatabaseConnection dbType="mysql" onConnectionChange={setPostgresConnection} />
+                  <DatabaseConnection dbType="postgresql" onConnectionChange={setPostgresConnection} />
                 </div>
               </div>
             </div>
@@ -390,7 +395,7 @@ export default function QueryRunner({ initialQuery = '' }) {
                 className="btn btn-primary gap-2"
               >
                 <Play className="w-4 h-4" />
-                {isRunning ? 'Running...' : postgresConnection?.connected ? 'Run on PostgreSQL' : 'Run Query'}
+                {isRunning ? 'Running...' : postgresConnection?.connected ? `Run on ${postgresConnection.dbType === 'mysql' ? 'MySQL' : 'PostgreSQL'}` : 'Run Query'}
               </motion.button>
 
               <motion.button

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import Anthropic from '@anthropic-ai/sdk';
 import pkg from 'pg';
 const { Pool } = pkg;
+import mysql from 'mysql2/promise';
 
 dotenv.config();
 
@@ -368,8 +369,9 @@ ${context ? `Additional context: ${context}` : ''}`;
   }
 });
 
-// PostgreSQL connection endpoint
+// Database connections storage
 const connections = new Map();
+const mysqlConnections = new Map();
 
 app.post('/api/execute-postgres', async (req, res) => {
   try {
@@ -486,6 +488,126 @@ app.post('/api/execute-postgres', async (req, res) => {
 
   } catch (error) {
     console.error('PostgreSQL error:', error);
+    return res.status(500).json({
+      error: 'Database error',
+      message: error.message,
+      code: error.code
+    });
+  }
+});
+
+// MySQL connection endpoint
+app.post('/api/execute-mysql', async (req, res) => {
+  try {
+    const { action, connectionConfig, query, connectionId } = req.body;
+
+    // Test connection
+    if (action === 'test') {
+      const { host, port, database, user, password } = connectionConfig;
+      
+      try {
+        const connection = await mysql.createConnection({
+          host,
+          port: port || 3306,
+          database,
+          user,
+          password,
+          connectTimeout: 5000,
+        });
+        
+        await connection.query('SELECT 1');
+        await connection.end();
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Connection successful' 
+        });
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // Connect and store connection
+    if (action === 'connect') {
+      const { host, port, database, user, password } = connectionConfig;
+      
+      const pool = mysql.createPool({
+        host,
+        port: port || 3306,
+        database,
+        user,
+        password,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+      });
+
+      // Test the connection
+      const connection = await pool.getConnection();
+      await connection.query('SELECT 1');
+      connection.release();
+
+      // Generate connection ID
+      const id = `mysql_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      mysqlConnections.set(id, pool);
+
+      return res.status(200).json({ 
+        success: true, 
+        connectionId: id,
+        message: 'Connected to MySQL' 
+      });
+    }
+
+    // Execute query
+    if (action === 'execute') {
+      if (!connectionId) {
+        return res.status(400).json({ error: 'Connection ID required' });
+      }
+
+      const pool = mysqlConnections.get(connectionId);
+      if (!pool) {
+        return res.status(404).json({ error: 'Connection not found. Please reconnect.' });
+      }
+
+      const startTime = Date.now();
+      const [rows, fields] = await pool.query(query);
+      const executionTime = Date.now() - startTime;
+
+      return res.status(200).json({
+        success: true,
+        rows: Array.isArray(rows) ? rows : [rows],
+        rowCount: Array.isArray(rows) ? rows.length : 1,
+        fields: fields?.map(f => ({
+          name: f.name,
+          type: f.type
+        })),
+        executionTime,
+        command: query.trim().split(' ')[0].toUpperCase()
+      });
+    }
+
+    // Disconnect
+    if (action === 'disconnect') {
+      if (!connectionId) {
+        return res.status(400).json({ error: 'Connection ID required' });
+      }
+
+      const pool = mysqlConnections.get(connectionId);
+      if (pool) {
+        await pool.end();
+        mysqlConnections.delete(connectionId);
+      }
+
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Disconnected' 
+      });
+    }
+
+    return res.status(400).json({ error: 'Invalid action' });
+
+  } catch (error) {
+    console.error('MySQL error:', error);
     return res.status(500).json({
       error: 'Database error',
       message: error.message,
