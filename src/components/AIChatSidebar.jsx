@@ -61,16 +61,27 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
       const data = await response.json()
       
       if (data.sql) {
-        // Add assistant response
+        // Add assistant response with database info
+        const dbInfo = data.dbName || 'SQLite'
+        const canExecute = selectedDbType === DB_TYPES.SQLITE
+        
+        let content = `I've generated ${dbInfo} SQL for you. Click "Use This SQL" to add it to your query editor.`
+        
+        if (!canExecute) {
+          content += `\n\n⚠️ Note: Only SQLite can execute in the browser. This ${dbInfo} SQL will be auto-converted to SQLite when you run it, or you can export it for use in a ${dbInfo} server.`
+        }
+        
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'I\'ve generated the SQL for you. Click "Use This SQL" to add it to your query editor.',
-          sql: data.sql
+          content,
+          sql: data.sql,
+          dbType: data.dbType,
+          dbName: data.dbName
         }])
         
-        // Notify parent component
+        // Notify parent component with metadata
         if (onSQLGenerated) {
-          onSQLGenerated(data.sql)
+          onSQLGenerated(data.sql, data.dbType)
         }
       } else {
         throw new Error('No SQL generated')

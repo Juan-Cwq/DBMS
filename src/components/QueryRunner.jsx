@@ -9,6 +9,7 @@ import ERDiagramSVG from './ERDiagramSVG'
 import DatabaseManager from './DatabaseManager'
 import AIChatSidebar from './AIChatSidebar'
 import { isDBML, dbmlToSQL } from '../utils/dbmlParser'
+import { convertSQLDialect, DB_TYPES } from '../utils/sqlDialects'
 
 export default function QueryRunner({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
@@ -20,6 +21,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [selectedTable, setSelectedTable] = useState(null)
   const [tableData, setTableData] = useState(null)
   const [currentDatabaseId, setCurrentDatabaseId] = useState(null)
+  const [sourceDbType, setSourceDbType] = useState(DB_TYPES.SQLITE)
   
   const [savedQueries, setSavedQueries] = useState(() => {
     const saved = localStorage.getItem('schemacraft_saved_queries')
@@ -47,9 +49,15 @@ export default function QueryRunner({ initialQuery = '' }) {
     setShowDiagram(true)
   }
 
-  const handleAIGeneratedSQL = (sql) => {
+  const handleAIGeneratedSQL = (sql, dbType = DB_TYPES.SQLITE) => {
     setQuery(sql)
+    setSourceDbType(dbType)
     setShowDiagram(true)
+    
+    // Show info if non-SQLite
+    if (dbType !== DB_TYPES.SQLITE) {
+      setError(`📝 Generated SQL is for ${dbType.toUpperCase()}. It will be auto-converted to SQLite when executed in the browser.`)
+    }
   }
 
   useEffect(() => {
@@ -77,9 +85,17 @@ export default function QueryRunner({ initialQuery = '' }) {
     const startTime = performance.now()
     
     try {
-      // Check if input contains multiple parts (DBML, DDL, DML) separated by ---
+      // Convert SQL to SQLite if needed
       let sqlToExecute = query
-      const parts = query.split('---').map(p => p.trim())
+      
+      // If source is not SQLite, convert it
+      if (sourceDbType !== DB_TYPES.SQLITE) {
+        console.log(`Converting ${sourceDbType} SQL to SQLite...`)
+        sqlToExecute = convertSQLDialect(query, sourceDbType, DB_TYPES.SQLITE)
+      }
+      
+      // Check if input contains multiple parts (DBML, DDL, DML) separated by ---
+      const parts = sqlToExecute.split('---').map(p => p.trim())
       
       if (parts.length === 3) {
         // Three-part format: DBML, DDL, DML

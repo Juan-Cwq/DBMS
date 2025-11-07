@@ -69,39 +69,52 @@ export function convertSQLDialect(sql, fromDialect, toDialect) {
   // Convert to SQLite (most common target for browser execution)
   if (toDialect === DB_TYPES.SQLITE) {
     converted = converted
-      // Data types
-      .replace(/VARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
+      // Data types (order matters - more specific first)
       .replace(/NVARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
       .replace(/VARCHAR2\s*\(\s*\d+\s*\)/gi, 'TEXT')
+      .replace(/VARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
+      .replace(/CHARACTER\s+VARYING\s*\(\s*\d+\s*\)/gi, 'TEXT')
       .replace(/CHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
-      .replace(/DATETIME2?/gi, 'TEXT')
+      .replace(/DATETIME2/gi, 'TEXT')
+      .replace(/DATETIME/gi, 'TEXT')
+      .replace(/TIMESTAMP\s+WITHOUT\s+TIME\s+ZONE/gi, 'TEXT')
+      .replace(/TIMESTAMP\s+WITH\s+TIME\s+ZONE/gi, 'TEXT')
       .replace(/TIMESTAMP/gi, 'TEXT')
-      .replace(/DECIMAL\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'REAL')
+      .replace(/DATE/gi, 'TEXT')
+      .replace(/TIME/gi, 'TEXT')
       .replace(/NUMERIC\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'REAL')
+      .replace(/DECIMAL\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'REAL')
       .replace(/NUMBER\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'REAL')
       .replace(/NUMBER\s*\(\s*\d+\s*\)/gi, 'INTEGER')
       .replace(/NUMBER\b/gi, 'REAL')
+      .replace(/DOUBLE\s+PRECISION/gi, 'REAL')
       .replace(/FLOAT/gi, 'REAL')
       .replace(/DOUBLE/gi, 'REAL')
       .replace(/BOOLEAN/gi, 'INTEGER')
       .replace(/BIT\b/gi, 'INTEGER')
+      .replace(/SMALLINT/gi, 'INTEGER')
+      .replace(/BIGINT/gi, 'INTEGER')
       .replace(/INT\b/gi, 'INTEGER')
       
-      // Auto-increment
+      // Auto-increment (order matters)
+      .replace(/BIGSERIAL/gi, 'INTEGER')
+      .replace(/SERIAL/gi, 'INTEGER')
       .replace(/AUTO_INCREMENT/gi, 'AUTOINCREMENT')
       .replace(/IDENTITY\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'AUTOINCREMENT')
-      .replace(/SERIAL/gi, 'INTEGER')
-      .replace(/GENERATED\s+ALWAYS\s+AS\s+IDENTITY/gi, 'AUTOINCREMENT')
+      .replace(/GENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(?:\s*\([^)]*\))?/gi, 'AUTOINCREMENT')
       
       // Boolean values
       .replace(/\bTRUE\b/gi, '1')
       .replace(/\bFALSE\b/gi, '0')
       
-      // Timestamps
+      // Timestamps and functions
       .replace(/CURRENT_TIMESTAMP/gi, "(datetime('now'))")
       .replace(/GETDATE\(\)/gi, "(datetime('now'))")
       .replace(/SYSTIMESTAMP/gi, "(datetime('now'))")
       .replace(/NOW\(\)/gi, "(datetime('now'))")
+      
+      // PostgreSQL-specific: Remove ON UPDATE CASCADE/RESTRICT from column definitions
+      .replace(/ON\s+UPDATE\s+(?:CASCADE|RESTRICT|SET\s+NULL|SET\s+DEFAULT|NO\s+ACTION)/gi, '')
       
       // Remove backticks and square brackets
       .replace(/`/g, '')
@@ -110,7 +123,14 @@ export function convertSQLDialect(sql, fromDialect, toDialect) {
       
       // Add IF NOT EXISTS
       .replace(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE TABLE IF NOT EXISTS $1')
-      .replace(/CREATE\s+INDEX\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE INDEX IF NOT EXISTS $1');
+      .replace(/CREATE\s+INDEX\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE INDEX IF NOT EXISTS $1')
+      
+      // Remove PostgreSQL-specific syntax
+      .replace(/::[\w\[\]]+/g, '') // Remove type casts like ::integer
+      .replace(/CONSTRAINT\s+(\w+)\s+/gi, '') // Simplify constraint names for SQLite
+      
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ');
   }
   
   return converted;
