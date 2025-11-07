@@ -56,9 +56,13 @@ export function executeQuery(sql) {
       .replace(/DOUBLE/gi, 'REAL') // DOUBLE -> REAL
       .replace(/BOOLEAN/gi, 'INTEGER') // BOOLEAN -> INTEGER
       .replace(/AUTO_INCREMENT/gi, 'AUTOINCREMENT') // MySQL -> SQLite
+      .replace(/INT\b/gi, 'INTEGER') // INT -> INTEGER (important for PRIMARY KEY)
       
       // Add IF NOT EXISTS to CREATE TABLE statements
       .replace(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE TABLE IF NOT EXISTS $1')
+      
+      // Add IF NOT EXISTS to CREATE INDEX statements
+      .replace(/CREATE\s+INDEX\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi, 'CREATE INDEX IF NOT EXISTS $1')
       
       // Remove backticks (MySQL style)
       .replace(/`/g, '')
@@ -68,27 +72,41 @@ export function executeQuery(sql) {
     
     const statements = normalizedSQL.split(';').filter(s => s.trim());
     
-    for (const statement of statements) {
-      if (!statement.trim()) continue;
-      
-      try {
-        const result = db.exec(statement.trim());
-        results.push({
-          statement: statement.trim(),
-          result: result,
-          success: true
-        });
-      } catch (stmtError) {
-        // Provide helpful error messages
-        if (stmtError.message.includes('foreign key')) {
-          throw new Error(`Foreign key constraint failed. Make sure referenced tables exist first. ${stmtError.message}`);
-        } else if (stmtError.message.includes('already exists')) {
-          throw new Error(`Table already exists. Use DROP TABLE first or modify the CREATE statement. ${stmtError.message}`);
-        } else if (stmtError.message.includes('syntax error')) {
-          throw new Error(`SQL syntax error. Check your query syntax for SQLite compatibility. ${stmtError.message}`);
+    // Start a transaction for better atomicity
+    db.exec('BEGIN TRANSACTION;');
+    
+    try {
+      for (const statement of statements) {
+        if (!statement.trim()) continue;
+        
+        try {
+          const result = db.exec(statement.trim());
+          results.push({
+            statement: statement.trim(),
+            result: result,
+            success: true
+          });
+        } catch (stmtError) {
+          // Provide helpful error messages
+          if (stmtError.message.includes('foreign key')) {
+            throw new Error(`Foreign key constraint failed. Make sure referenced tables exist first. ${stmtError.message}`);
+          } else if (stmtError.message.includes('already exists')) {
+            throw new Error(`Table already exists. Use DROP TABLE first or modify the CREATE statement. ${stmtError.message}`);
+          } else if (stmtError.message.includes('syntax error')) {
+            throw new Error(`SQL syntax error. Check your query syntax for SQLite compatibility. ${stmtError.message}`);
+          } else if (stmtError.message.includes('no such column')) {
+            throw new Error(`Column not found: ${stmtError.message}. This usually means the table schema doesn't match your INSERT statement. Try clearing the database first.`);
+          }
+          throw stmtError;
         }
-        throw stmtError;
       }
+      
+      // Commit the transaction
+      db.exec('COMMIT;');
+    } catch (error) {
+      // Rollback on error
+      db.exec('ROLLBACK;');
+      throw error;
     }
     
     // Save after each execution
