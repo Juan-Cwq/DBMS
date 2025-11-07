@@ -34,13 +34,106 @@ export default async function handler(req, res) {
       });
     }
 
-    const { prompt, context } = req.body;
+    const { prompt, context, dbType = 'sqlite' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const systemPrompt = `You are **SchemaCraft AI**, an expert Senior Database Architect specializing in SQLite. Your mission is to transform natural language requests into complete, production-ready database solutions.
+    // Validate database type
+    const validDbTypes = ['sqlite', 'mysql', 'postgresql', 'sqlserver', 'oracle'];
+    const normalizedDbType = dbType.toLowerCase();
+    if (!validDbTypes.includes(normalizedDbType)) {
+      return res.status(400).json({ 
+        error: 'Invalid database type',
+        message: `Database type must be one of: ${validDbTypes.join(', ')}`
+      });
+    }
+
+    // Database-specific syntax configurations
+    const dbConfigs = {
+      sqlite: {
+        name: 'SQLite',
+        stringType: 'TEXT',
+        dateType: 'TEXT',
+        decimalType: 'REAL',
+        intType: 'INTEGER',
+        boolType: 'INTEGER',
+        autoIncrement: 'INTEGER PRIMARY KEY AUTOINCREMENT',
+        ifNotExists: 'IF NOT EXISTS',
+        currentTimestamp: "(datetime('now'))",
+        boolTrue: '1',
+        boolFalse: '0',
+        timestampExample: "'2024-01-01 12:00:00'",
+        features: ['Use TEXT for dates/times', 'Use REAL for decimals', 'Use INTEGER for booleans (0/1)', 'AUTOINCREMENT for auto-incrementing IDs']
+      },
+      mysql: {
+        name: 'MySQL',
+        stringType: 'VARCHAR',
+        dateType: 'DATETIME',
+        decimalType: 'DECIMAL',
+        intType: 'INT',
+        boolType: 'BOOLEAN',
+        autoIncrement: 'INT AUTO_INCREMENT PRIMARY KEY',
+        ifNotExists: 'IF NOT EXISTS',
+        currentTimestamp: 'CURRENT_TIMESTAMP',
+        boolTrue: 'TRUE',
+        boolFalse: 'FALSE',
+        timestampExample: "'2024-01-01 12:00:00'",
+        features: ['Use VARCHAR for strings', 'Use DATETIME for timestamps', 'Use DECIMAL for precise decimals', 'AUTO_INCREMENT for auto-incrementing IDs', 'ENGINE=InnoDB for tables']
+      },
+      postgresql: {
+        name: 'PostgreSQL',
+        stringType: 'VARCHAR',
+        dateType: 'TIMESTAMP',
+        decimalType: 'NUMERIC',
+        intType: 'INTEGER',
+        boolType: 'BOOLEAN',
+        autoIncrement: 'SERIAL PRIMARY KEY',
+        ifNotExists: 'IF NOT EXISTS',
+        currentTimestamp: 'CURRENT_TIMESTAMP',
+        boolTrue: 'TRUE',
+        boolFalse: 'FALSE',
+        timestampExample: "'2024-01-01 12:00:00'",
+        features: ['Use VARCHAR for strings', 'Use TIMESTAMP for date/time', 'Use NUMERIC for precise decimals', 'Use SERIAL for auto-incrementing IDs', 'Support for advanced features like JSONB, arrays']
+      },
+      sqlserver: {
+        name: 'SQL Server',
+        stringType: 'NVARCHAR',
+        dateType: 'DATETIME2',
+        decimalType: 'DECIMAL',
+        intType: 'INT',
+        boolType: 'BIT',
+        autoIncrement: 'INT IDENTITY(1,1) PRIMARY KEY',
+        ifNotExists: '', // SQL Server uses different syntax
+        currentTimestamp: 'GETDATE()',
+        boolTrue: '1',
+        boolFalse: '0',
+        timestampExample: "'2024-01-01 12:00:00'",
+        features: ['Use NVARCHAR for Unicode strings', 'Use DATETIME2 for timestamps', 'Use BIT for booleans', 'IDENTITY for auto-incrementing IDs', 'Use square brackets [table_name] for identifiers']
+      },
+      oracle: {
+        name: 'Oracle',
+        stringType: 'VARCHAR2',
+        dateType: 'TIMESTAMP',
+        decimalType: 'NUMBER',
+        intType: 'NUMBER',
+        boolType: 'NUMBER(1)',
+        autoIncrement: 'NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY',
+        ifNotExists: '', // Oracle 23c+ supports IF NOT EXISTS
+        currentTimestamp: 'SYSTIMESTAMP',
+        boolTrue: '1',
+        boolFalse: '0',
+        timestampExample: "TO_TIMESTAMP('2024-01-01 12:00:00', 'YYYY-MM-DD HH24:MI:SS')",
+        features: ['Use VARCHAR2 for strings', 'Use TIMESTAMP for date/time', 'Use NUMBER for numeric values', 'Use GENERATED ALWAYS AS IDENTITY for auto-incrementing IDs', 'Sequence-based auto-increment']
+      }
+    };
+
+    const config = dbConfigs[normalizedDbType];
+
+    const systemPrompt = `You are **SchemaCraft AI**, an expert Senior Database Architect specializing in ${config.name}. Your mission is to transform natural language requests into complete, production-ready database solutions.
+
+TARGET DATABASE: ${config.name}
 
 CRITICAL OUTPUT REQUIREMENTS:
 1. Return ONLY code - NO explanations, NO markdown wrappers, NO conversational text
@@ -88,45 +181,49 @@ Ref: posts.user_id > users.id
 
 PART 2: SQL DDL (Logical Schema)
 
-Objective: Generate complete SQLite CREATE TABLE statements.
+Objective: Generate complete ${config.name} CREATE TABLE statements.
 
-CRITICAL SQLite SYNTAX:
-1. Use TEXT for strings (NOT VARCHAR/CHAR)
-2. Use TEXT for dates/times (NOT DATETIME/TIMESTAMP)
-3. Use REAL for decimals (NOT DECIMAL/FLOAT)
-4. Use INTEGER for numbers/booleans
-5. Use INTEGER PRIMARY KEY AUTOINCREMENT for IDs
-6. ALWAYS use IF NOT EXISTS
-7. Include created_at and updated_at on every table
-8. Use ON DELETE CASCADE or ON DELETE RESTRICT appropriately
-9. Add CHECK constraints for enums and booleans
+CRITICAL ${config.name.toUpperCase()} SYNTAX:
+${config.features.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+${config.ifNotExists ? `- ALWAYS use ${config.ifNotExists}` : ''}
+- Include created_at and updated_at on every table
+- Use ON DELETE CASCADE or ON DELETE RESTRICT appropriately
+- Add CHECK constraints for enums and validation
+
+Data Types:
+- Strings: ${config.stringType}(length)
+- Dates/Times: ${config.dateType}
+- Decimals: ${config.decimalType}(precision, scale)
+- Integers: ${config.intType}
+- Booleans: ${config.boolType}
+- Auto-increment IDs: ${config.autoIncrement}
 
 Constraints:
 - Explicitly define PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK
-- Add created_at TEXT DEFAULT (datetime('now'))
-- Add updated_at TEXT DEFAULT (datetime('now'))
+- Add created_at ${config.dateType} DEFAULT ${config.currentTimestamp}
+- Add updated_at ${config.dateType} DEFAULT ${config.currentTimestamp}
 - Create INDEX statements for all foreign keys
 
 Example:
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+CREATE TABLE ${config.ifNotExists} users (
+  id ${config.autoIncrement},
+  username ${config.stringType}(50) UNIQUE NOT NULL,
+  email ${config.stringType}(100) UNIQUE NOT NULL,
+  created_at ${config.dateType} DEFAULT ${config.currentTimestamp},
+  updated_at ${config.dateType} DEFAULT ${config.currentTimestamp}
 );
 
-CREATE TABLE IF NOT EXISTS posts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
+CREATE TABLE ${config.ifNotExists} posts (
+  id ${config.autoIncrement},
+  title ${config.stringType}(200) NOT NULL,
   body TEXT,
-  user_id INTEGER NOT NULL,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
+  user_id ${config.intType} NOT NULL,
+  created_at ${config.dateType} DEFAULT ${config.currentTimestamp},
+  updated_at ${config.dateType} DEFAULT ${config.currentTimestamp},
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+CREATE INDEX ${config.ifNotExists} idx_posts_user_id ON posts(user_id);
 
 ---
 
@@ -139,6 +236,7 @@ Rules:
 - Data must be consistent with all constraints
 - Ensure foreign keys reference valid parent records
 - Make data diverse and realistic
+- Use ${config.name}-specific syntax for booleans (${config.boolTrue}/${config.boolFalse}) and timestamps
 
 Example:
 INSERT INTO users (username, email) VALUES
@@ -184,6 +282,8 @@ ${context ? `\n\nCURRENT DATABASE CONTEXT:\n${context}\n\nUse this context to un
       dbml: parts[0] || '',
       ddl: parts[1] || '',
       dml: parts[2] || '',
+      dbType: normalizedDbType,
+      dbName: config.name,
       usage: {
         input_tokens: message.usage.input_tokens,
         output_tokens: message.usage.output_tokens,

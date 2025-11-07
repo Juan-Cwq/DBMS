@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Send, Bot, User, Loader2, Sparkles, ChevronLeft, ChevronRight, Database } from 'lucide-react'
 import { getTables, getTableStructure } from '../utils/database'
 import { getCurrentDatabaseContext } from '../utils/databaseStorage'
 import { API_ENDPOINTS } from '../config/api'
+import { getAllDBTypes, DB_TYPES } from '../utils/sqlDialects'
 
 export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollapsed }) {
   const [messages, setMessages] = useState([
@@ -14,8 +15,10 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedDbType, setSelectedDbType] = useState(DB_TYPES.SQLITE)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const dbTypes = getAllDBTypes()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -50,7 +53,8 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: userMessage,
-          context
+          context,
+          dbType: selectedDbType
         }),
       })
 
@@ -126,7 +130,7 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
         <>
           {/* Header */}
           <div className="p-4 border-b border-base-300 bg-gradient-to-r from-primary/10 to-secondary/10">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3">
               <div className="relative">
                 <Bot className="w-6 h-6 text-primary" />
                 <Sparkles className="w-3 h-3 text-secondary absolute -top-1 -right-1" />
@@ -135,6 +139,28 @@ export default function AIChatSidebar({ onSQLGenerated, isCollapsed, setIsCollap
                 <h3 className="font-bold text-sm">AI Assistant</h3>
                 <p className="text-xs text-neutral-medium-gray">Database Expert</p>
               </div>
+            </div>
+            
+            {/* Database Type Selector */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-neutral-medium-gray flex items-center gap-1">
+                <Database className="w-3 h-3" />
+                Target Database
+              </label>
+              <select 
+                value={selectedDbType}
+                onChange={(e) => setSelectedDbType(e.target.value)}
+                className="select select-bordered select-sm w-full text-xs"
+              >
+                {dbTypes.map(db => (
+                  <option key={db.value} value={db.value}>
+                    {db.icon} {db.displayName}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-neutral-medium-gray">
+                {dbTypes.find(db => db.value === selectedDbType)?.description}
+              </p>
             </div>
           </div>
 
