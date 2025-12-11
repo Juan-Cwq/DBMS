@@ -47,6 +47,8 @@ export default function DatabaseConnection({ dbType = 'mysql', onConnectionChang
     setIsTesting(true)
     setTestResult(null)
 
+    console.log('Testing connection with config:', config)
+
     try {
       const response = await fetch(currentDb.endpoint, {
         method: 'POST',
@@ -259,6 +261,7 @@ export default function DatabaseConnection({ dbType = 'mysql', onConnectionChang
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       placeholder="••••••••"
                       className="input input-bordered w-full pr-10"
+                      autoComplete="new-password"
                     />
                     <button
                       type="button"

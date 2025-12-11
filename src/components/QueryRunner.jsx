@@ -39,6 +39,7 @@ export default function QueryRunner({ initialQuery = '' }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showDiagram, setShowDiagram] = useState(false)
   const [aiSidebarCollapsed, setAiSidebarCollapsed] = useState(false)
+  const [mysqlTables, setMysqlTables] = useState([])
 
   const handleDatabaseLoaded = (database) => {
     setRefreshTrigger(prev => prev + 1)
@@ -62,6 +63,62 @@ export default function QueryRunner({ initialQuery = '' }) {
       setError(`📝 Generated SQL is for ${dbType.toUpperCase()}. It will be auto-converted to SQLite when executed in the browser.`)
     }
   }
+
+  const fetchMySQLTables = async () => {
+    if (!postgresConnection?.connected || postgresConnection.dbType !== 'mysql') return
+
+    try {
+      const endpoint = `${API_ENDPOINTS.generateSQL.replace('/generate-sql', '')}/execute-mysql`
+      
+      // Get table names
+      const tablesResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'getTables',
+          connectionId: postgresConnection.connectionId
+        })
+      })
+      
+      const tablesData = await tablesResponse.json()
+      if (!tablesData.success) return
+
+      // Get structure for each table
+      const tablesWithStructure = await Promise.all(
+        tablesData.tables.map(async (tableName) => {
+          const structResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'getTableStructure',
+              connectionId: postgresConnection.connectionId,
+              tableName
+            })
+          })
+          
+          const structData = await structResponse.json()
+          return {
+            name: tableName,
+            sql: `-- MySQL Table: ${tableName}`,
+            structure: structData.columns || [],
+            foreignKeys: structData.foreignKeys || []
+          }
+        })
+      )
+
+      setMysqlTables(tablesWithStructure)
+    } catch (error) {
+      console.error('Error fetching MySQL tables:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (postgresConnection?.connected && postgresConnection.dbType === 'mysql') {
+      fetchMySQLTables()
+    } else {
+      setMysqlTables([])
+    }
+  }, [postgresConnection, refreshTrigger])
 
   useEffect(() => {
     initDatabase().then(() => {
@@ -113,17 +170,19 @@ export default function QueryRunner({ initialQuery = '' }) {
         const endTime = performance.now()
         setExecutionTime(endTime - startTime)
 
-        // Format PostgreSQL results
+        // Format MySQL/PostgreSQL results
+        console.log('MySQL/PostgreSQL response:', data);
+        
         const formattedResults = [{
-          type: data.command?.toLowerCase() || 'query',
+          type: data.command?.toLowerCase() || 'select',
           columns: data.fields?.map(f => f.name) || [],
           rows: data.rows?.map(row => Object.values(row)) || [],
           rowCount: data.rowCount || 0,
-          message: `${data.command} completed successfully`
+          message: data.rows && data.rows.length > 0 ? undefined : `${data.command} completed successfully`
         }]
 
         setResults(formattedResults)
-        addToHistory(query, true)
+        // addToHistory(query, true) // TODO: Implement history function
         setRefreshTrigger(prev => prev + 1)
         setIsRunning(false)
         return
@@ -325,6 +384,7 @@ export default function QueryRunner({ initialQuery = '' }) {
           key={refreshTrigger}
           onTableSelect={handleTableSelect}
           onRefresh={handleRefresh}
+          mysqlConnection={postgresConnection}
         />
       </div>
 
@@ -422,8 +482,16 @@ export default function QueryRunner({ initialQuery = '' }) {
               className="card bg-base-200 shadow-xl"
             >
               <div className="card-body">
-                <h3 className="card-title text-lg mb-4">Database Schema Diagram</h3>
-                <ERDiagramSVG key={refreshTrigger} />
+                <h3 className="card-title text-lg mb-4">
+                  Database Schema Diagram
+                  {postgresConnection?.connected && postgresConnection.dbType === 'mysql' && (
+                    <span className="badge badge-success ml-2">MySQL</span>
+                  )}
+                </h3>
+                <ERDiagramSVG 
+                  key={refreshTrigger} 
+                  mysqlTables={mysqlTables.length > 0 ? mysqlTables : null}
+                />
               </div>
             </motion.div>
           )}
@@ -466,7 +534,7 @@ export default function QueryRunner({ initialQuery = '' }) {
 
                 {results.map((result, idx) => (
                   <div key={idx} className="mb-4 last:mb-0">
-                    {result.type === 'select' && (
+                    {(result.type === 'select' || result.rows?.length > 0) && (
                       <div className="overflow-x-auto">
                         <table className="table table-zebra table-sm">
                           <thead>
@@ -494,7 +562,7 @@ export default function QueryRunner({ initialQuery = '' }) {
                       </div>
                     )}
 
-                    {result.type !== 'select' && (
+                    {result.type !== 'select' && result.rows?.length === 0 && result.message && (
                       <div className="alert alert-success">
                         <CheckCircle className="w-5 h-5" />
                         <div className="font-semibold">{result.message}</div>

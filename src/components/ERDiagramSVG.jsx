@@ -238,7 +238,7 @@ function RelationshipSVG({ relationship, tables }) {
   )
 }
 
-export default function ERDiagramSVG() {
+export default function ERDiagramSVG({ mysqlTables = null }) {
   const [tables, setTables] = useState([])
   const [relationships, setRelationships] = useState([])
   const [transform, setTransform] = useState({ x: 0, y: 0, zoom: 1 })
@@ -249,14 +249,16 @@ export default function ERDiagramSVG() {
   
   useEffect(() => {
     loadSchema()
-  }, [])
+  }, [mysqlTables])
   
   const loadSchema = () => {
-    const allTables = getTables()
+    // Use MySQL tables if available, otherwise use SQLite
+    const allTables = mysqlTables || getTables()
     if (allTables.length === 0) return
     
     const tablesWithStructure = allTables.map((table, index) => {
-      const structure = getTableStructure(table.name)
+      // Handle both MySQL and SQLite table structures
+      const structure = table.structure || getTableStructure(table.name)
       const col = index % 3
       const row = Math.floor(index / 3)
       
@@ -266,11 +268,12 @@ export default function ERDiagramSVG() {
         x: col * 280 + 50,
         y: row * 350 + 50,
         sql: table.sql,
+        foreignKeys: table.foreignKeys || [],
         fields: structure.map(field => ({
           id: field.name,
           name: field.name,
           type: field.type,
-          pk: field.pk === 1,
+          pk: field.pk === 1 || field.key === 'PRI',
           fk: false
         }))
       }
@@ -279,23 +282,39 @@ export default function ERDiagramSVG() {
     // Extract relationships
     const rels = []
     tablesWithStructure.forEach(table => {
-      const fkMatches = table.sql.matchAll(/FOREIGN KEY \((\w+)\) REFERENCES (\w+)\((\w+)\)/gi)
-      for (const match of fkMatches) {
-        const startFieldId = match[1]
-        const endTableId = match[2]
-        const endFieldId = match[3]
-        
-        // Mark FK fields
-        const field = table.fields.find(f => f.name === startFieldId)
-        if (field) field.fk = true
-        
-        rels.push({
-          id: `${table.id}-${startFieldId}-${endTableId}-${endFieldId}`,
-          startTableId: table.id,
-          startFieldId,
-          endTableId,
-          endFieldId
+      // Use foreignKeys array if available (MySQL), otherwise parse SQL (SQLite)
+      if (table.foreignKeys && table.foreignKeys.length > 0) {
+        table.foreignKeys.forEach(fk => {
+          const field = table.fields.find(f => f.name === fk.column)
+          if (field) field.fk = true
+          
+          rels.push({
+            id: `${table.id}-${fk.column}-${fk.referencedTable}-${fk.referencedColumn}`,
+            startTableId: table.id,
+            startFieldId: fk.column,
+            endTableId: fk.referencedTable,
+            endFieldId: fk.referencedColumn
+          })
         })
+      } else {
+        const fkMatches = table.sql.matchAll(/FOREIGN KEY \((\w+)\) REFERENCES (\w+)\((\w+)\)/gi)
+        for (const match of fkMatches) {
+          const startFieldId = match[1]
+          const endTableId = match[2]
+          const endFieldId = match[3]
+          
+          // Mark FK fields
+          const field = table.fields.find(f => f.name === startFieldId)
+          if (field) field.fk = true
+          
+          rels.push({
+            id: `${table.id}-${startFieldId}-${endTableId}-${endFieldId}`,
+            startTableId: table.id,
+            startFieldId,
+            endTableId,
+            endFieldId
+          })
+        }
       }
     })
     
@@ -370,27 +389,106 @@ export default function ERDiagramSVG() {
   }
   
   const handleDownloadPNG = async () => {
-    const svg = svgRef.current
-    const serializer = new XMLSerializer()
-    const svgString = serializer.serializeToString(svg)
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    const img = new Image()
-    
-    img.onload = () => {
-      canvas.width = svg.clientWidth * 2
-      canvas.height = svg.clientHeight * 2
-      ctx.fillStyle = '#f8fafc'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    try {
+      const svg = svgRef.current
+      if (!svg) {
+        alert('No diagram to export')
+        return
+      }
+
+      // Get SVG dimensions
+      const bbox = svg.getBBox()
+      const width = Math.max(bbox.width + bbox.x + 100, 800)
+      const height = Math.max(bbox.height + bbox.y + 100, 600)
+
+      // Clone and prepare SVG
+      const svgClone = svg.cloneNode(true)
+      svgClone.setAttribute('width', width)
+      svgClone.setAttribute('height', height)
+      svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`)
       
-      const link = document.createElement('a')
-      link.download = `database-diagram-${Date.now()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
+      // Add white background
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      rect.setAttribute('width', '100%')
+      rect.setAttribute('height', '100%')
+      rect.setAttribute('fill', '#ffffff')
+      svgClone.insertBefore(rect, svgClone.firstChild)
+
+      const serializer = new XMLSerializer()
+      const svgString = serializer.serializeToString(svgClone)
+      
+      const canvas = document.createElement('canvas')
+      canvas.width = width * 2
+      canvas.height = height * 2
+      const ctx = canvas.getContext('2d')
+      ctx.scale(2, 2)
+      
+      const img = document.createElement('img')
+      
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, width, height)
+        
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.download = `database-diagram-${Date.now()}.png`
+          link.href = url
+          link.click()
+          URL.revokeObjectURL(url)
+        }, 'image/png')
+      }
+      
+      img.onerror = (e) => {
+        console.error('Image load error:', e)
+        alert('Failed to export PNG. Downloading SVG instead.')
+        handleDownloadSVG()
+      }
+      
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(svgBlob)
+      img.src = url
+    } catch (error) {
+      console.error('PNG export error:', error)
+      alert('Failed to export PNG. Downloading SVG instead.')
+      handleDownloadSVG()
     }
-    
-    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)))
+  }
+
+  const handleDownloadSVG = () => {
+    try {
+      const svg = svgRef.current
+      if (!svg) return
+
+      const bbox = svg.getBBox()
+      const width = Math.max(bbox.width + bbox.x + 100, 800)
+      const height = Math.max(bbox.height + bbox.y + 100, 600)
+
+      const svgClone = svg.cloneNode(true)
+      svgClone.setAttribute('width', width)
+      svgClone.setAttribute('height', height)
+      svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`)
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+      
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      rect.setAttribute('width', '100%')
+      rect.setAttribute('height', '100%')
+      rect.setAttribute('fill', '#ffffff')
+      svgClone.insertBefore(rect, svgClone.firstChild)
+
+      const serializer = new XMLSerializer()
+      const svgString = serializer.serializeToString(svgClone)
+      
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.download = `database-diagram-${Date.now()}.svg`
+      link.href = url
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('SVG export error:', error)
+      alert('Failed to export diagram: ' + error.message)
+    }
   }
   
   const handleDownloadSQL = () => {

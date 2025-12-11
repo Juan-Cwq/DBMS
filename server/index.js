@@ -570,19 +570,121 @@ app.post('/api/execute-mysql', async (req, res) => {
       }
 
       const startTime = Date.now();
-      const [rows, fields] = await pool.query(query);
+      
+      // Remove comment-only lines first, then split into statements
+      const cleanedQuery = query
+        .split('\n')
+        .filter(line => {
+          const trimmed = line.trim();
+          return trimmed.length > 0 && !trimmed.startsWith('--');
+        })
+        .join('\n');
+      
+      // Split query into individual statements
+      const statements = cleanedQuery
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
+      let lastResult = null;
+      let totalRows = 0;
+      
+      // Execute each statement
+      for (let i = 0; i < statements.length; i++) {
+        const statement = statements[i];
+        if (!statement) continue;
+        
+        try {
+          const [rows, fields] = await pool.query(statement);
+          lastResult = { rows, fields };
+          if (Array.isArray(rows)) {
+            totalRows += rows.length;
+          }
+        } catch (err) {
+          // Show which statement failed and the error
+          const preview = statement.length > 100 ? statement.substring(0, 100) + '...' : statement;
+          throw new Error(`Statement ${i + 1}/${statements.length} failed: ${preview}\n\nError: ${err.message}`);
+        }
+      }
+      
       const executionTime = Date.now() - startTime;
 
       return res.status(200).json({
         success: true,
-        rows: Array.isArray(rows) ? rows : [rows],
-        rowCount: Array.isArray(rows) ? rows.length : 1,
-        fields: fields?.map(f => ({
+        rows: lastResult?.rows ? (Array.isArray(lastResult.rows) ? lastResult.rows : [lastResult.rows]) : [],
+        rowCount: totalRows,
+        fields: lastResult?.fields?.map(f => ({
           name: f.name,
           type: f.type
         })),
         executionTime,
-        command: query.trim().split(' ')[0].toUpperCase()
+        command: statements[0]?.trim().split(' ')[0].toUpperCase(),
+        statementsExecuted: statements.length
+      });
+    }
+
+    // Get tables
+    if (action === 'getTables') {
+      if (!connectionId) {
+        return res.status(400).json({ error: 'Connection ID required' });
+      }
+
+      const pool = mysqlConnections.get(connectionId);
+      if (!pool) {
+        return res.status(404).json({ error: 'Connection not found. Please reconnect.' });
+      }
+
+      const [tables] = await pool.query('SHOW TABLES');
+      const tableNames = tables.map(row => Object.values(row)[0]);
+
+      return res.status(200).json({
+        success: true,
+        tables: tableNames
+      });
+    }
+
+    // Get table structure
+    if (action === 'getTableStructure') {
+      const { tableName } = req.body;
+      
+      if (!connectionId) {
+        return res.status(400).json({ error: 'Connection ID required' });
+      }
+
+      const pool = mysqlConnections.get(connectionId);
+      if (!pool) {
+        return res.status(404).json({ error: 'Connection not found. Please reconnect.' });
+      }
+
+      const [columns] = await pool.query(`DESCRIBE ${tableName}`);
+      
+      // Get foreign keys
+      const [foreignKeys] = await pool.query(`
+        SELECT 
+          COLUMN_NAME,
+          REFERENCED_TABLE_NAME,
+          REFERENCED_COLUMN_NAME
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND REFERENCED_TABLE_NAME IS NOT NULL
+      `, [tableName]);
+
+      return res.status(200).json({
+        success: true,
+        columns: columns.map(col => ({
+          name: col.Field,
+          type: col.Type,
+          nullable: col.Null === 'YES',
+          key: col.Key,
+          default: col.Default,
+          extra: col.Extra
+        })),
+        foreignKeys: foreignKeys.map(fk => ({
+          column: fk.COLUMN_NAME,
+          referencedTable: fk.REFERENCED_TABLE_NAME,
+          referencedColumn: fk.REFERENCED_COLUMN_NAME
+        }))
       });
     }
 
